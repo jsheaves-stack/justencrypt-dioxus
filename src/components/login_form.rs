@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::ReqwestClient;
+use crate::{Authenticated, ReqwestClient};
 
 #[derive(Deserialize, Serialize)]
 struct LoginForm {
@@ -14,6 +14,7 @@ struct LoginForm {
 #[component]
 pub fn Login() -> Element {
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
+    let mut authenticated_context = use_context::<Signal<Authenticated>>();
 
     let onsubmit = move |event: FormEvent| async move {
         let username = event
@@ -46,7 +47,7 @@ pub fn Login() -> Element {
 
         match resp {
             // Parse data from here, such as storing a response token
-            Ok(_) => (),
+            Ok(_) => authenticated_context.write().0 = true,
             //Handle any errors from the fetch here
             Err(_err) => {
                 tracing::error!("Login failed: {}", _err);

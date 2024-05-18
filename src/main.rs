@@ -1,5 +1,13 @@
 #![allow(non_snake_case)]
 
+const LOG_LEVEL: Level = Level::INFO;
+
+mod global {
+    pub use crate::components::login_form::Login;
+    pub use dioxus::prelude::*;
+    pub use tracing::Level;
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 mod desktop_only {
     pub use dioxus_desktop::{Config, WindowBuilder};
@@ -17,32 +25,40 @@ use desktop_only::*;
 #[cfg(target_arch = "wasm32")]
 use web_only::*;
 
-use dioxus::prelude::*;
-use tracing::Level;
+use global::*;
 
-mod components; // Import the module containing the LoginForm component
-
-use crate::components::login_form::Login;
+mod components;
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 enum Route {
     #[route("/")]
+    Home {},
+
+    #[route("/login")]
     Login {},
 }
+
+#[derive(Clone)]
+struct Authenticated(bool);
 
 #[derive(Clone)]
 struct ReqwestClient(Client);
 
 #[cfg(target_arch = "wasm32")]
 fn main() {
-    dioxus_logger::init(Level::DEBUG).expect("failed to init logger");
+    dioxus_logger::init(LOG_LEVEL).expect("failed to init logger");
 
     LaunchBuilder::web().launch(App);
 }
 
+#[derive(PartialEq, Props, Clone)]
+struct AppState {
+    authenticated: bool,
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
-    dioxus_logger::init(Level::DEBUG).expect("failed to init logger");
+    dioxus_logger::init(LOG_LEVEL).expect("failed to init logger");
 
     LaunchBuilder::desktop()
         .with_cfg(
@@ -64,6 +80,7 @@ fn App() -> Element {
     let client = Client::builder().cookie_provider(jar).build().unwrap();
 
     use_context_provider(|| Signal::new(ReqwestClient(client)));
+    use_context_provider(|| Signal::new(Authenticated(false)));
 
     rsx! {
         link { rel: "stylesheet", href: "tailwind.css" }
@@ -80,5 +97,11 @@ fn App() -> Element {
     rsx! {
         link { rel: "stylesheet", href: "tailwind.css" }
         Router::<Route> {}
+    }
+}
+
+fn Home() -> Element {
+    rsx! {
+        div {}
     }
 }
