@@ -69,6 +69,7 @@ pub fn Login() -> Element {
                                 name: "username",
                                 id: "username",
                                 required: true,
+                                autocomplete: "on"
                             }
                         }
                         div {
@@ -79,6 +80,7 @@ pub fn Login() -> Element {
                                 name: "password",
                                 id: "password",
                                 required: true,
+                                autocomplete: "on"
                             }
                         }
                         div {

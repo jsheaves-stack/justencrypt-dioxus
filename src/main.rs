@@ -1,9 +1,9 @@
 #![allow(non_snake_case)]
 
-const LOG_LEVEL: Level = Level::INFO;
+const LOG_LEVEL: Level = Level::DEBUG;
 
 mod global {
-    pub use crate::components::login_form::Login;
+    pub use crate::components::{home::Home, login_form::Login};
     pub use dioxus::prelude::*;
     pub use tracing::Level;
 }
@@ -97,11 +97,5 @@ fn App() -> Element {
     rsx! {
         link { rel: "stylesheet", href: "tailwind.css" }
         Router::<Route> {}
-    }
-}
-
-fn Home() -> Element {
-    rsx! {
-        div {}
     }
 }
