@@ -1,9 +1,23 @@
 #![allow(non_snake_case)]
 
-use std::sync::Arc;
+#[cfg(not(target_arch = "wasm32"))]
+mod desktop_only {
+    pub use dioxus_desktop::{Config, WindowBuilder};
+    pub use reqwest::{cookie::Jar, Client};
+    pub use std::sync::Arc;
+}
+
+#[cfg(target_arch = "wasm32")]
+mod web_only {
+    pub use reqwest::Client;
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+use desktop_only::*;
+#[cfg(target_arch = "wasm32")]
+use web_only::*;
 
 use dioxus::prelude::*;
-use reqwest::{cookie::Jar, Client};
 use tracing::Level;
 
 mod components; // Import the module containing the LoginForm component
@@ -11,42 +25,60 @@ mod components; // Import the module containing the LoginForm component
 use crate::components::login_form::Login;
 
 #[derive(Clone, Routable, Debug, PartialEq)]
-#[rustfmt::skip]
 enum Route {
     #[route("/")]
-    Home {},
-
-    #[route("/login")]
-    Login{},
+    Login {},
 }
+
 #[derive(Clone)]
 struct ReqwestClient(Client);
 
+#[cfg(target_arch = "wasm32")]
 fn main() {
-    // Init logger
     dioxus_logger::init(Level::DEBUG).expect("failed to init logger");
 
-    launch(App);
+    LaunchBuilder::web().launch(App);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+fn main() {
+    dioxus_logger::init(Level::DEBUG).expect("failed to init logger");
+
+    LaunchBuilder::desktop()
+        .with_cfg(
+            Config::new()
+                .with_window(
+                    WindowBuilder::new()
+                        .with_resizable(true)
+                        .with_title("JustEncrypt"),
+                )
+                .with_resource_directory("assets"),
+        )
+        .launch(App)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn App() -> Element {
     let jar = Arc::new(Jar::default());
 
-    let client = Client::builder()
-        .cookie_provider(jar.clone())
-        .build()
-        .unwrap();
+    let client = Client::builder().cookie_provider(jar).build().unwrap();
 
     use_context_provider(|| Signal::new(ReqwestClient(client)));
 
     rsx! {
+        link { rel: "stylesheet", href: "tailwind.css" }
         Router::<Route> {}
     }
 }
 
-#[component]
-fn Home() -> Element {
+#[cfg(target_arch = "wasm32")]
+fn App() -> Element {
+    let client = Client::builder().build().unwrap();
+
+    use_context_provider(|| Signal::new(ReqwestClient(client)));
+
     rsx! {
-        div {}
+        link { rel: "stylesheet", href: "tailwind.css" }
+        Router::<Route> {}
     }
 }
