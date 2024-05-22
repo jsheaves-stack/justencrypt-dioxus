@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-const LOG_LEVEL: Level = Level::DEBUG;
+const LOG_LEVEL: Level = Level::INFO;
 
 mod global {
     pub use crate::components::{file_explorer::FileExplorer, home::Home, login_form::Login};
@@ -10,6 +10,7 @@ mod global {
 
 #[cfg(not(target_arch = "wasm32"))]
 mod desktop_only {
+    pub use dioxus_desktop::LogicalSize;
     pub use dioxus_desktop::{Config, WindowBuilder};
     pub use reqwest::{cookie::Jar, Client};
     pub use std::sync::Arc;
@@ -55,7 +56,8 @@ fn main() {
                 .with_window(
                     WindowBuilder::new()
                         .with_resizable(true)
-                        .with_title("JustEncrypt"),
+                        .with_title("JustEncrypt")
+                        .with_inner_size(LogicalSize::new(880.0, 600.0)),
                 )
                 .with_resource_directory("assets"),
         )
