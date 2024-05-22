@@ -3,7 +3,7 @@
 const LOG_LEVEL: Level = Level::DEBUG;
 
 mod global {
-    pub use crate::components::{home::Home, login_form::Login};
+    pub use crate::components::{file_explorer::FileExplorer, home::Home, login_form::Login};
     pub use dioxus::prelude::*;
     pub use tracing::Level;
 }
@@ -33,13 +33,7 @@ mod components;
 enum Route {
     #[route("/")]
     Home {},
-
-    #[route("/login")]
-    Login {},
 }
-
-#[derive(Clone)]
-struct Authenticated(bool);
 
 #[derive(Clone)]
 struct ReqwestClient(Client);
@@ -49,11 +43,6 @@ fn main() {
     dioxus_logger::init(LOG_LEVEL).expect("failed to init logger");
 
     LaunchBuilder::web().launch(App);
-}
-
-#[derive(PartialEq, Props, Clone)]
-struct AppState {
-    authenticated: bool,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -80,10 +69,10 @@ fn App() -> Element {
     let client = Client::builder().cookie_provider(jar).build().unwrap();
 
     use_context_provider(|| Signal::new(ReqwestClient(client)));
-    use_context_provider(|| Signal::new(Authenticated(false)));
 
     rsx! {
         link { rel: "stylesheet", href: "tailwind.css" }
+
         Router::<Route> {}
     }
 }

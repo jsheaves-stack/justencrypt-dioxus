@@ -1,10 +1,18 @@
 use dioxus::prelude::*;
 
-use crate::Login;
+use crate::{FileExplorer, Login};
 
 #[component]
 pub fn Home() -> Element {
+    let authenticated = use_signal(|| false);
+    
     rsx! {
-        Login {}
+        div { class: "w-screen h-screen bg-slate-900",
+            if !authenticated() {
+                Login { authenticated }
+            } else {
+                FileExplorer {}
+            }
+        }
     }
 }
