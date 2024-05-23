@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-const LOG_LEVEL: Level = Level::INFO;
+const LOG_LEVEL: Level = Level::DEBUG;
 
 mod global {
     pub use crate::components::{file_explorer::FileExplorer, home::Home, login_form::Login};

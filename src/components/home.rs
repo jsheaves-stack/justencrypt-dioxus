@@ -7,7 +7,7 @@ pub fn Home() -> Element {
     let authenticated = use_signal(|| false);
     
     rsx! {
-        div { class: "w-screen h-screen bg-slate-900",
+        div { class: "h-screen bg",
             if !authenticated() {
                 Login { authenticated }
             } else {

@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::ReqwestClient;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+const IMAGE_FORMATS: [&str; 8] = ["APNG", "AVIF", "GIF", "JPG", "JPEG", "PNG", "SVG", "WebP"];
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct GetFolder {
     is_file: bool,
     file_extension: Option<String>,
@@ -74,42 +76,74 @@ pub fn FileExplorer() -> Element {
 
     let folder_contents_for_display = folder_contents
         .into_iter()
-        .map(|f| {
-            let mut current_path = current_path.clone();
-
+        .map(|file| {
             rsx! {
-                if f.is_file {
-                    div { class: "w-32 h-32 px-2 py-2 bg-green-200", "{f.file_name}" }
+                if file.is_file {
+                    File { file, current_path }
                 } else {
-
-                    div { class: "w-32 h-32 px-2 py-2 bg-green-200",
-                        button {
-                            onclick: move |_| {
-                                let path = sanitize_url(format!("{}/{}", current_path().display(), f.file_name));
-                                current_path.set(PathBuf::from(path));
-                            },
-                            "{f.file_name}"
-                        }
-                    }
+                    Folder { file, current_path }
                 }
             }
         })
         .collect::<Vec<_>>();
 
     rsx! {
-        button {
-            class: "bg-gray-200 px-4 py-2",
-            onclick: move |_| {
-                let mut path = current_path();
-                path.pop();
-                current_path.set(path);
-            },
-            "Back"
+        div { class: "bg-mainAccent h-16 border-b-4 border-black content-center",
+            button {
+                class: "flex text-align-center cursor-pointer items-center rounded-base border-2 border-black bg-main ml-3.5 w-18 px-4 py-2 my-auto text-sm font-base shadow-base transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
+                onclick: move |_| {
+                    let mut path = current_path();
+                    path.pop();
+                    current_path.set(path);
+                },
+                "Back"
+            }
         }
         div { class: "w-full px-4 py-4 gap-4 flex flex-row flex-wrap h-min items-center justify-items-center",
             {
                 folder_contents_for_display.into_iter()
             }
+        }
+    }
+}
+
+#[component]
+pub fn File(file: GetFolder, current_path: Signal<PathBuf>) -> Element {
+    let image_url = match file.file_extension.as_deref() {
+        Some(ext) if IMAGE_FORMATS.contains(&ext.to_uppercase().as_str()) => {
+            format!(
+                "http://localhost:8000/file/{}",
+                sanitize_url(format!(
+                    "{}{}",
+                    current_path().display().to_string(),
+                    file.file_name
+                ))
+            )
+        }
+        _ => String::new(),
+    };
+
+    rsx! {
+        div { class: "w-40 h-40 overflow-hidden rounded-base border-2 border-black bg-main font-base shadow-base",
+            img { class: "w-full h-24", src: "{image_url}" }
+            div { class: "text-sm w-full border-t-2 border-black p-2 truncate text-wrap text-ellipsis overflow-hidden", "{file.file_name}" }
+        }
+    }
+}
+
+#[component]
+pub fn Folder(file: GetFolder, current_path: Signal<PathBuf>) -> Element {
+    rsx! {
+        div {
+            class: "w-40 h-40 overflow-hidden cursor-pointer rounded-base border-2 border-black bg-main font-base shadow-base",
+            onclick: move |_| {
+                let path = sanitize_url(
+                    format!("{}/{}", current_path().display(), file.file_name),
+                );
+                current_path.set(PathBuf::from(path));
+            },
+            img { class: "w-full h-24", src: "" }
+            div { class: "text-sm w-full border-t-2 border-black p-2 truncate text-wrap text-ellipsis overflow-hidden", "{file.file_name}" }
         }
     }
 }
