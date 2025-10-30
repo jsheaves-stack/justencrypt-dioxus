@@ -1,9 +1,6 @@
-use std::collections::HashMap;
-
+use crate::{requests::session::submit_login, AppState, ReqwestClient, Route};
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
-
-use crate::ReqwestClient;
 
 #[derive(Deserialize, Serialize)]
 struct LoginForm {
@@ -12,50 +9,27 @@ struct LoginForm {
 }
 
 #[component]
-pub fn Login(authenticated: Signal<bool>) -> Element {
-    let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
+pub fn Login() -> Element {
+    let reqwest_client_context: Signal<ReqwestClient> = use_context::<Signal<ReqwestClient>>();
+    let mut app_state: Signal<AppState> = use_context::<Signal<AppState>>();
+    let router: RouterContext = router();
 
     let onsubmit = move |event: FormEvent| async move {
-        let username = event
-            .data
-            .values()
-            .get("username")
-            .and_then(|v| v.get(0))
-            .unwrap()
-            .clone();
+        event.prevent_default();
 
-        let password = event
-            .data
-            .values()
-            .get("password")
-            .and_then(|v| v.get(0))
-            .unwrap()
-            .clone();
-
-        let mut login_form = HashMap::new();
-
-        login_form.insert("username", username);
-        login_form.insert("password", password);
-
-        let resp = reqwest_client_context()
-            .0
-            .post("http://localhost:8000/session/create")
-            .json(&login_form)
-            .send()
-            .await;
-
-        match resp {
-            // Parse data from here, such as storing a response token
-            Ok(_) => authenticated.set(true),
-            //Handle any errors from the fetch here
-            Err(_err) => {
-                tracing::error!("Login failed: {}", _err);
+        match submit_login(event, reqwest_client_context).await {
+            Ok(_) => {
+                app_state.write().authenticated = true;
+                router.replace(Route::Home {});
+            }
+            Err(_) => {
+                return;
             }
         }
     };
 
     rsx! {
-        div { class: "flex items-center justify-center min-h-screen bg-bg",
+        div { class: "w-full h-full flex items-center justify-center min-h-screen bg",
             div { class: "w-full max-w-md",
                 div { class: "relative flex flex-col items-center justify-center rounded-base border-2 border-black bg-mainAccent p-10 pt-12 font-base shadow-base",
                     h2 { class: "text-2xl font-bold mb-6 text-center text-white", "Login" }
@@ -68,7 +42,7 @@ pub fn Login(authenticated: Signal<bool>) -> Element {
                                 name: "username",
                                 id: "username",
                                 required: true,
-                                autocomplete: "on"
+                                autocomplete: "on",
                             }
                         }
                         div {
@@ -79,7 +53,7 @@ pub fn Login(authenticated: Signal<bool>) -> Element {
                                 name: "password",
                                 id: "password",
                                 required: true,
-                                autocomplete: "on"
+                                autocomplete: "on",
                             }
                         }
                         div { class: "w-full items-center",

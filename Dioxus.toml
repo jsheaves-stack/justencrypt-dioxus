@@ -5,7 +5,7 @@ name = "JustEncrypt"
 
 # Dioxus App Default Platform
 # desktop, web
-default_platform = "desktop"
+default_platform = "web"
 
 # `build` & `serve` dist path
 out_dir = "dist"
@@ -26,15 +26,10 @@ reload_html = true
 # which files or dirs will be watcher monitoring
 watch_path = ["src", "assets"]
 
-# include `assets` in web platform
-[web.resource]
-
-# CSS style file
-
-style = ["/tailwind.css", "/main.css", "header.svg", "favicon.ico"]
-
 # Javascript code file
 script = []
+
+index_on_404 = true
 
 [web.resource.dev]
 

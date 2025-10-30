@@ -1,149 +1,93 @@
-use std::path::PathBuf;
-
+use crate::{
+    components::{create_folder_modal::CreateFolderModal, file::File, folder::Folder},
+    requests::folder::get_folder,
+    Route,
+};
 use dioxus::prelude::*;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::ReqwestClient;
-
-const IMAGE_FORMATS: [&str; 8] = ["APNG", "AVIF", "GIF", "JPG", "JPEG", "PNG", "SVG", "WebP"];
+pub const IMAGE_FORMATS: [&str; 8] = ["APNG", "AVIF", "GIF", "JPG", "JPEG", "PNG", "SVG", "WebP"];
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct GetFolder {
-    is_file: bool,
-    file_extension: Option<String>,
-    file_name: String,
-}
-
-async fn get_folder(current_path: PathBuf) -> Result<Vec<GetFolder>, ()> {
-    let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
-
-    let resp = reqwest_client_context()
-        .0
-        .get(format!(
-            "http://localhost:8000/folder/{}",
-            current_path.display()
-        ))
-        .send()
-        .await;
-
-    let folders = match resp {
-        // Parse data from here, such as storing a response token
-        Ok(r) => {
-            if r.status().is_success() {
-                let response_string = r.text().await.unwrap();
-
-                let folders: Vec<GetFolder> =
-                    serde_json::from_str(response_string.as_str()).unwrap();
-
-                Ok(folders)
-            } else {
-                Err(())
-            }
-        }
-        //Handle any errors from the fetch here
-        Err(_err) => {
-            tracing::error!("Fetch user manifest failed: {}", _err);
-
-            Err(())
-        }
-    };
-
-    match folders {
-        Ok(f) => Ok(f),
-        Err(_) => Err(()),
-    }
-}
-
-fn sanitize_url(url: String) -> String {
-    // Create a regex to match multiple slashes
-    let re = Regex::new(r"/+").unwrap();
-
-    // Replace multiple slashes with a single slash
-    let sanitized = re.replace_all(url.as_str(), "/");
-
-    // Convert the result to a String and return
-    sanitized.to_string()
+pub struct FolderItem {
+    pub is_file: bool,
+    pub file_extension: Option<String>,
+    pub file_name: String,
 }
 
 #[component]
-pub fn FileExplorer() -> Element {
-    let mut current_path = use_signal(|| PathBuf::from(""));
+pub fn FileExplorer(path: Vec<String>) -> Element {
+    let router = router();
+    let mut app_state = use_context::<Signal<crate::AppState>>();
+    let create_folder_modal_state = app_state.read().create_folder_modal;
+
     let folder_contents_resource =
-        use_resource(move || get_folder(current_path().try_into().unwrap()));
+        use_resource(use_reactive!(
+            |(path)| async move { get_folder(path).await }
+        ));
 
-    let folder_contents = folder_contents_resource.unwrap().unwrap();
+    if app_state.read().path != path {
+        app_state.write().path = path.clone();
+    }
 
-    let folder_contents_for_display = folder_contents
-        .into_iter()
-        .map(|file| {
-            rsx! {
-                if file.is_file {
-                    File { file, current_path }
-                } else {
-                    Folder { file, current_path }
+    let folder_contents_for_display = match &*folder_contents_resource.read() {
+        Some(Ok(files)) => files
+            .into_iter()
+            .map(|file| {
+                rsx! {
+                    if file.is_file {
+                        File { file: file.clone(), current_path: path.clone() }
+                    } else {
+                        Folder { file: file.clone(), current_path: path.clone() }
+                    }
                 }
-            }
-        })
-        .collect::<Vec<_>>();
+            })
+            .collect::<Vec<_>>(),
+        Some(Err(_)) => {
+            vec![rsx! { div { "Error loading folder." } }]
+        }
+        None => {
+            vec![rsx! { div { "Loading contents..." } }]
+        }
+    };
+
+    let display_path = if path.is_empty() {
+        "/"
+    } else {
+        &(String::from("/") + &path.join("/"))
+    };
 
     rsx! {
-        div { class: "bg-mainAccent h-16 border-b-4 border-black content-center",
+        div { class: "h-full w-full bg-mainAccent h-16 border-b-4 border-black content-center",
+            div { "Current Path: {display_path}" }
             button {
                 class: "flex text-align-center cursor-pointer items-center rounded-base border-2 border-black bg-main ml-3.5 w-18 px-4 py-2 my-auto text-sm font-base shadow-base transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
                 onclick: move |_| {
-                    let mut path = current_path();
-                    path.pop();
-                    current_path.set(path);
+                    let mut new_path_vec = path.clone();
+                    if new_path_vec.pop().is_some() {
+                        router
+                            .push(Route::FileExplorer {
+                                path: new_path_vec,
+                            });
+                    }
                 },
                 "Back"
             }
-        }
-        div { class: "w-full px-4 py-4 gap-4 flex flex-row flex-wrap h-min items-center justify-items-center",
-            {
-                folder_contents_for_display.into_iter()
+            button {
+                class: "flex text-align-center cursor-pointer items-center rounded-base border-2 border-black bg-main ml-3.5 w-18 px-4 py-2 my-auto text-sm font-base shadow-base transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
+                onclick: move |_| {
+                    app_state.write().create_folder_modal = true;
+                },
+                "Create Folder"
             }
         }
-    }
-}
 
-#[component]
-pub fn File(file: GetFolder, current_path: Signal<PathBuf>) -> Element {
-    let image_url = match file.file_extension.as_deref() {
-        Some(ext) if IMAGE_FORMATS.contains(&ext.to_uppercase().as_str()) => {
-            format!(
-                "http://localhost:8000/file/{}",
-                sanitize_url(format!(
-                    "{}{}",
-                    current_path().display().to_string(),
-                    file.file_name
-                ))
-            )
+        if create_folder_modal_state {
+            CreateFolderModal {}
         }
-        _ => String::new(),
-    };
 
-    rsx! {
-        div { class: "w-40 h-40 overflow-hidden rounded-base border-2 border-black bg-main font-base shadow-base",
-            img { class: "w-full h-24", src: "{image_url}" }
-            div { class: "text-sm w-full border-t-2 border-black p-2 truncate text-wrap text-ellipsis overflow-hidden", "{file.file_name}" }
-        }
-    }
-}
-
-#[component]
-pub fn Folder(file: GetFolder, current_path: Signal<PathBuf>) -> Element {
-    rsx! {
-        div {
-            class: "w-40 h-40 overflow-hidden cursor-pointer rounded-base border-2 border-black bg-main font-base shadow-base",
-            onclick: move |_| {
-                let path = sanitize_url(
-                    format!("{}/{}", current_path().display(), file.file_name),
-                );
-                current_path.set(PathBuf::from(path));
-            },
-            img { class: "w-full h-24", src: "" }
-            div { class: "text-sm w-full border-t-2 border-black p-2 truncate text-wrap text-ellipsis overflow-hidden", "{file.file_name}" }
+        div { class: "h-full w-full px-4 py-4 gap-4 flex flex-row flex-wrap h-min items-center justify-items-center",
+            {folder_contents_for_display.into_iter()}
         }
     }
 }

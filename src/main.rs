@@ -29,11 +29,33 @@ use web_only::*;
 use global::*;
 
 mod components;
+mod requests;
+
+pub const API_URL: &str = "http://localhost:8000";
+
+struct AppState {
+    _theme: String,
+    authenticated: bool,
+    path: Vec<String>,
+    create_folder_modal: bool,
+}
+
+static TAILWIND_CSS: Asset = asset!("./assets/tailwind.css");
+static MAIN_CSS: Asset = asset!("./assets/main.css");
+static HEADER_SVG: Asset = asset!("./assets/header.svg");
+static FAVICON_ICO: Asset = asset!("./assets/favicon.ico");
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 enum Route {
     #[route("/")]
     Home {},
+
+    #[route("/login")]
+    Login {},
+
+    #[layout(Home)]
+    #[route("/folder/:..path")]
+    FileExplorer { path: Vec<String> },
 }
 
 #[derive(Clone)]
@@ -67,13 +89,22 @@ fn main() {
 #[cfg(not(target_arch = "wasm32"))]
 fn App() -> Element {
     let jar = Arc::new(Jar::default());
-
     let client = Client::builder().cookie_provider(jar).build().unwrap();
+    let app_state = AppState {
+        _theme: "light".to_string(),
+        authenticated: false,
+        path: vec![],
+        create_folder_modal: false,
+    };
 
     use_context_provider(|| Signal::new(ReqwestClient(client)));
+    use_context_provider(|| Signal::new(app_state));
 
     rsx! {
-        link { rel: "stylesheet", href: "tailwind.css" }
+        document::Stylesheet { href: TAILWIND_CSS }
+        document::Stylesheet { href: MAIN_CSS }
+        document::Stylesheet { href: HEADER_SVG }
+        document::Stylesheet { href: FAVICON_ICO }
 
         Router::<Route> {}
     }
@@ -82,11 +113,22 @@ fn App() -> Element {
 #[cfg(target_arch = "wasm32")]
 fn App() -> Element {
     let client = Client::builder().build().unwrap();
+    let app_state = AppState {
+        _theme: "light".to_string(),
+        authenticated: false,
+        path: vec![],
+        create_folder_modal: false,
+    };
 
     use_context_provider(|| Signal::new(ReqwestClient(client)));
+    use_context_provider(|| Signal::new(app_state));
 
     rsx! {
-        link { rel: "stylesheet", href: "tailwind.css" }
+        document::Stylesheet { href: TAILWIND_CSS }
+        document::Stylesheet { href: MAIN_CSS }
+        document::Stylesheet { href: HEADER_SVG }
+        document::Stylesheet { href: FAVICON_ICO }
+
         Router::<Route> {}
     }
 }
