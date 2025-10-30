@@ -47,38 +47,40 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         }
     };
 
-    let display_path = if path.is_empty() {
-        "/"
-    } else {
-        &(String::from("/") + &path.join("/"))
-    };
-
     rsx! {
-        div { class: "h-full w-full bg-mainAccent h-16 border-b-4 border-black content-center",
-            button {
-                class: "flex text-align-center cursor-pointer items-center rounded-base border-2 border-black bg-main ml-3.5 w-18 px-4 py-2 my-auto text-sm font-base shadow-base transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
-                onclick: move |_| {
-                    let mut new_path_vec = path.clone();
-                    if new_path_vec.pop().is_some() {
-                        router
-                            .push(Route::FileExplorer {
-                                path: new_path_vec,
-                            });
-                    }
-                },
-                "Back"
+        div { class: "mt-4 grid h-min w-full auto-rows-min justify-items-end gap-x-4 gap-y-2 px-4",
+            div { class: "col-start-1 row-start-1 flex justify-self-start",
+                button {
+                    class: "flex text-align-center cursor-pointer items-center rounded-base border-2 border-black bg-main ml-3.5 w-18 px-4 py-2 my-auto text-sm font-base shadow-base transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
+                    onclick: move |_| {
+                        let mut new_path_vec = path.clone();
+                        if new_path_vec.pop().is_some() {
+                            router
+                                .push(Route::FileExplorer {
+                                    path: new_path_vec,
+                                });
+                        }
+                    },
+                    span { "Back" }
+                }
             }
-            button {
-                class: "flex text-align-center cursor-pointer items-center rounded-base border-2 border-black bg-main ml-3.5 w-18 px-4 py-2 my-auto text-sm font-base shadow-base transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
-                onclick: move |_| {
-                    app_state.write().create_folder_modal = true;
-                },
-                "Create Folder"
+            div { class: "col-start-2 row-start-1 flex flex-wrap items-center gap-x-4 gap-y-2 justify-self-end",
+                div {}
+                div {
+                    button {
+                        class: "flex text-align-center cursor-pointer items-center rounded-base border-2 border-black bg-main ml-3.5 w-18 px-4 py-2 my-auto text-sm font-base shadow-base transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
+                        onclick: move |_| {
+                            app_state.write().create_folder_modal = true;
+                        },
+                        "Create Folder"
+                    }
+                }
+                div {}
             }
         }
 
         if create_folder_modal_state {
-            CreateFolderModal {current_path: path.clone()}
+            CreateFolderModal { current_path: path.clone() }
         }
 
         div { class: "h-full w-full px-4 py-4 gap-4 flex flex-row flex-wrap h-min items-center justify-items-center",

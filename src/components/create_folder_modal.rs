@@ -32,13 +32,12 @@ pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
                     class: "text-align-center w-18 ml-2 mt-4 flex cursor-pointer rounded-base border-2 border-black bg-main px-4 py-2 text-sm font-base shadow-base transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
                     onclick: move |_| {
                         let current_path = current_path.clone();
-
                         spawn(async move {
                             match create_folder(current_path, folder_name.read().to_string()).await {
                                 Ok(_) => {
-                                  app_state.write().create_folder_modal = false;
-                                },
-                                Err(_) => (),
+                                    app_state.write().create_folder_modal = false;
+                                }
+                                Err(_) => {}
                             }
                         });
                     },
