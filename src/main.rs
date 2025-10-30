@@ -36,7 +36,6 @@ pub const API_URL: &str = "http://localhost:8000";
 struct AppState {
     _theme: String,
     authenticated: bool,
-    path: Vec<String>,
     create_folder_modal: bool,
 }
 
@@ -93,7 +92,6 @@ fn App() -> Element {
     let app_state = AppState {
         _theme: "light".to_string(),
         authenticated: false,
-        path: vec![],
         create_folder_modal: false,
     };
 
@@ -116,7 +114,6 @@ fn App() -> Element {
     let app_state = AppState {
         _theme: "light".to_string(),
         authenticated: false,
-        path: vec![],
         create_folder_modal: false,
     };
 

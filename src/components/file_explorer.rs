@@ -26,10 +26,6 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
             |(path)| async move { get_folder(path).await }
         ));
 
-    if app_state.read().path != path {
-        app_state.write().path = path.clone();
-    }
-
     let folder_contents_for_display = match &*folder_contents_resource.read() {
         Some(Ok(files)) => files
             .into_iter()
@@ -59,7 +55,6 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
 
     rsx! {
         div { class: "h-full w-full bg-mainAccent h-16 border-b-4 border-black content-center",
-            div { "Current Path: {display_path}" }
             button {
                 class: "flex text-align-center cursor-pointer items-center rounded-base border-2 border-black bg-main ml-3.5 w-18 px-4 py-2 my-auto text-sm font-base shadow-base transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
                 onclick: move |_| {
@@ -83,7 +78,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         }
 
         if create_folder_modal_state {
-            CreateFolderModal {}
+            CreateFolderModal {current_path: path.clone()}
         }
 
         div { class: "h-full w-full px-4 py-4 gap-4 flex flex-row flex-wrap h-min items-center justify-items-center",

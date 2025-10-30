@@ -10,7 +10,7 @@ pub fn Home() -> Element {
     let current_route = use_route::<Route>();
 
     let session_check = use_resource(move || async move {
-        if app_state.read().authenticated {
+        if authenticated {
             return Ok(());
         }
 
@@ -19,7 +19,7 @@ pub fn Home() -> Element {
 
         match get_folder(root_path).await {
             Ok(_) => {
-                if !app_state.read().authenticated {
+                if !authenticated {
                     app_state.write().authenticated = true;
                 }
 

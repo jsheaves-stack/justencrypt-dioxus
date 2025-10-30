@@ -3,10 +3,9 @@ use dioxus::prelude::*;
 use crate::requests::folder::create_folder;
 
 #[component]
-pub fn CreateFolderModal() -> Element {
+pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
     let mut folder_name = use_signal::<String>(|| String::new());
     let mut app_state = use_context::<Signal<crate::AppState>>();
-    let current_path = app_state.read().path.clone();
 
     rsx! {
         div { class: "fixed left-0 top-0 z-50 flex h-screen w-screen items-center justify-center bg-overlay text-text",
