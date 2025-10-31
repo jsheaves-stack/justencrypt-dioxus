@@ -1,10 +1,11 @@
-use crate::{requests::folder::get_folder, Route};
+use crate::{requests::folder::get_folder, ReqwestClient, Route};
 use dioxus::prelude::*;
 
 #[component]
 pub fn Home() -> Element {
     let router = router();
     let mut app_state = use_context::<Signal<crate::AppState>>();
+    let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
     let authenticated = app_state.read().authenticated;
 
     let current_route = use_route::<Route>();
@@ -17,7 +18,7 @@ pub fn Home() -> Element {
         let mut root_path = Vec::<String>::new();
         root_path.push(String::from(""));
 
-        match get_folder(root_path).await {
+        match get_folder(reqwest_client_context, root_path).await {
             Ok(_) => {
                 if !authenticated {
                     app_state.write().authenticated = true;

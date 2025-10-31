@@ -37,6 +37,7 @@ struct AppState {
     _theme: String,
     authenticated: bool,
     create_folder_modal: bool,
+    needs_refetch: bool,
 }
 
 static TAILWIND_CSS: Asset = asset!("./assets/tailwind.css");
@@ -115,6 +116,7 @@ fn App() -> Element {
         _theme: "light".to_string(),
         authenticated: false,
         create_folder_modal: false,
+        needs_refetch: false,
     };
 
     use_context_provider(|| Signal::new(ReqwestClient(client)));

@@ -15,7 +15,7 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
                 file.file_name
             ),
             format!(
-                "{}/thumbnail/{}{}",
+                "{}/thumbnail/{}/{}",
                 API_URL,
                 current_path.join("/"),
                 file.file_name

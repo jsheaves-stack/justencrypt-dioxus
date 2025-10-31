@@ -1,11 +1,12 @@
 use dioxus::prelude::*;
 
-use crate::requests::folder::create_folder;
+use crate::{requests::folder::put_folder, ReqwestClient};
 
 #[component]
 pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
     let mut folder_name = use_signal::<String>(|| String::new());
     let mut app_state = use_context::<Signal<crate::AppState>>();
+    let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
 
     rsx! {
         div { class: "fixed left-0 top-0 z-50 flex h-screen w-screen items-center justify-center bg-overlay text-text",
@@ -33,9 +34,10 @@ pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
                     onclick: move |_| {
                         let current_path = current_path.clone();
                         spawn(async move {
-                            match create_folder(current_path, folder_name.read().to_string()).await {
+                            match put_folder(reqwest_client_context, current_path, folder_name.read().to_string()).await {
                                 Ok(_) => {
                                     app_state.write().create_folder_modal = false;
+                                    app_state.write().needs_refetch = true;
                                 }
                                 Err(_) => {}
                             }

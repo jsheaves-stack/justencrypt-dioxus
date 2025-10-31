@@ -1,7 +1,7 @@
 use crate::{
     components::{create_folder_modal::CreateFolderModal, file::File, folder::Folder},
-    requests::folder::get_folder,
-    Route,
+    requests::{file::put_file, folder::get_folder},
+    ReqwestClient, Route,
 };
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -19,27 +19,52 @@ pub struct FolderItem {
 pub fn FileExplorer(path: Vec<String>) -> Element {
     let router = router();
     let mut app_state = use_context::<Signal<crate::AppState>>();
+    let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
     let create_folder_modal_state = app_state.read().create_folder_modal;
+    let needs_refetch = use_memo(move || app_state.read().needs_refetch);
+    let current_path = path.clone();
 
-    let folder_contents_resource =
-        use_resource(use_reactive!(
-            |(path)| async move { get_folder(path).await }
-        ));
+    let path_clone = path.clone();
+    let mut folder_contents_resource =
+        use_resource(use_reactive!(|(path_clone, reqwest_client_context)| {
+            let path_clone = path_clone.clone();
+            let client_clone = reqwest_client_context;
 
-    let folder_contents_for_display = match &*folder_contents_resource.read() {
-        Some(Ok(files)) => files
-            .into_iter()
-            .map(|file| {
-                rsx! {
-                    if file.is_file {
-                        File { file: file.clone(), current_path: path.clone() }
-                    } else {
-                        Folder { file: file.clone(), current_path: path.clone() }
-                    }
-                }
-            })
-            .collect::<Vec<_>>(),
-        Some(Err(_)) => {
+            async move {
+                let result = get_folder(client_clone, path_clone.clone()).await;
+
+                (result, path_clone)
+            }
+        }));
+
+    use_effect(move || {
+        if needs_refetch() {
+            folder_contents_resource.restart();
+            app_state.write().needs_refetch = false;
+        }
+    });
+
+    let path_clone = path.clone();
+    let folder_contents_for_display = match (&*folder_contents_resource.value())() {
+        Some((Ok(files), resource_path)) => {
+            if resource_path == path_clone {
+                files
+                    .into_iter()
+                    .map(|file| {
+                        rsx! {
+                            if file.is_file {
+                                File { file: file.clone(), current_path: path.clone() }
+                            } else {
+                                Folder { file: file.clone(), current_path: path.clone() }
+                            }
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            } else {
+                vec![rsx! { div { "Loading contents..." } }]
+            }
+        }
+        Some((Err(_), _)) => {
             vec![rsx! { div { "Error loading folder." } }]
         }
         None => {
@@ -75,7 +100,21 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                         "Create Folder"
                     }
                 }
-                div {}
+                div {
+                    input {
+                        class: "hidden",
+                        r#type: "file",
+                        multiple: true,
+                        onchange: move |e| {
+                            let current_path = current_path.clone();
+                            async move {
+                                if let Some(file_engine) = &e.files() {
+                                    put_file(reqwest_client_context, current_path.clone(), file_engine).await.unwrap()
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 

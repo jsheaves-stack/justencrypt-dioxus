@@ -1,4 +1,4 @@
-use crate::{requests::session::submit_login, AppState, ReqwestClient, Route};
+use crate::{requests::session::create_session, AppState, ReqwestClient, Route};
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +17,7 @@ pub fn Login() -> Element {
     let onsubmit = move |event: FormEvent| async move {
         event.prevent_default();
 
-        match submit_login(event, reqwest_client_context).await {
+        match create_session(event, reqwest_client_context).await {
             Ok(_) => {
                 app_state.write().authenticated = true;
                 router.replace(Route::Home {});

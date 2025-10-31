@@ -2,7 +2,7 @@ use crate::{ReqwestClient, API_URL};
 use dioxus::{html::FormData, prelude::Event, signals::Signal};
 use std::collections::HashMap;
 
-pub async fn submit_login(
+pub async fn create_session(
     event: Event<FormData>,
     reqwest_client_context: Signal<ReqwestClient>,
 ) -> Result<(), ()> {

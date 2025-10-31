@@ -1,8 +1,11 @@
 use crate::{components::file_explorer::FolderItem, ReqwestClient, API_URL};
-use dioxus::{hooks::use_context, signals::Signal};
+use dioxus::signals::Signal;
 
-pub async fn create_folder(current_path: Vec<String>, folder_name: String) -> Result<(), ()> {
-    let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
+pub async fn put_folder(
+    reqwest_client_context: Signal<ReqwestClient>,
+    current_path: Vec<String>,
+    folder_name: String,
+) -> Result<(), ()> {
     let folder_url = format!(
         "{}/folder/{}/{}",
         API_URL,
@@ -33,8 +36,10 @@ pub async fn create_folder(current_path: Vec<String>, folder_name: String) -> Re
     }
 }
 
-pub async fn get_folder(current_path: Vec<String>) -> Result<Vec<FolderItem>, ()> {
-    let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
+pub async fn get_folder(
+    reqwest_client_context: Signal<ReqwestClient>,
+    current_path: Vec<String>,
+) -> Result<Vec<FolderItem>, ()> {
     let folder_url = format!("{}/folder/{}", API_URL, current_path.join("/"));
 
     #[cfg(target_arch = "wasm32")]
