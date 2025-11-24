@@ -21,8 +21,8 @@ pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
                 div { class: "grid grid-rows-[2em,1fr] gap-2",
                     label { "Folder Name" }
                     input {
-                        r#type: "text",
                         class: "h-12 w-full rounded-base border-2 border-black bg-bg p-[10px] font-base text-text outline-none ring-offset-white transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950 focus-visible:ring-offset-2",
+                        r#type: "text",
                         value: "{folder_name.read()}",
                         onchange: move |e| {
                             folder_name.set(e.value());
@@ -34,7 +34,13 @@ pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
                     onclick: move |_| {
                         let current_path = current_path.clone();
                         spawn(async move {
-                            match put_folder(reqwest_client_context, current_path, folder_name.read().to_string()).await {
+                            match put_folder(
+                                    reqwest_client_context,
+                                    current_path,
+                                    folder_name.read().to_string(),
+                                )
+                                .await
+                            {
                                 Ok(_) => {
                                     app_state.write().create_folder_modal = false;
                                     app_state.write().needs_refetch = true;

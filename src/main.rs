@@ -40,10 +40,10 @@ struct AppState {
     needs_refetch: bool,
 }
 
-static TAILWIND_CSS: Asset = asset!("./assets/tailwind.css");
-static MAIN_CSS: Asset = asset!("./assets/main.css");
-static HEADER_SVG: Asset = asset!("./assets/header.svg");
-static FAVICON_ICO: Asset = asset!("./assets/favicon.ico");
+static TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
+static MAIN_CSS: Asset = asset!("/assets/main.css");
+static HEADER_SVG: Asset = asset!("/assets/header.svg");
+static FAVICON_ICO: Asset = asset!("/assets/favicon.ico");
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 enum Route {
@@ -94,6 +94,7 @@ fn App() -> Element {
         _theme: "light".to_string(),
         authenticated: false,
         create_folder_modal: false,
+        needs_refetch: false,
     };
 
     use_context_provider(|| Signal::new(ReqwestClient(client)));
@@ -105,7 +106,7 @@ fn App() -> Element {
         document::Stylesheet { href: HEADER_SVG }
         document::Stylesheet { href: FAVICON_ICO }
 
-        Router::<Route> {}
+        div { class: "dark w-full h-full", Router::<Route> {} }
     }
 }
 
@@ -128,6 +129,6 @@ fn App() -> Element {
         document::Stylesheet { href: HEADER_SVG }
         document::Stylesheet { href: FAVICON_ICO }
 
-        Router::<Route> {}
+        div { class: "dark w-full h-full", Router::<Route> {} }
     }
 }

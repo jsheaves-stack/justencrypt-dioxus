@@ -1,5 +1,10 @@
 use crate::{
-    components::{create_folder_modal::CreateFolderModal, file::File, folder::Folder},
+    components::{
+        create_folder_modal::CreateFolderModal,
+        file::File,
+        folder::Folder,
+        ui::{button::Button, header::Header},
+    },
     requests::{file::put_file, folder::get_folder},
     ReqwestClient, Route,
 };
@@ -23,6 +28,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
     let create_folder_modal_state = app_state.read().create_folder_modal;
     let needs_refetch = use_memo(move || app_state.read().needs_refetch);
     let current_path = path.clone();
+    let current_path2 = path.clone();
 
     let path_clone = path.clone();
     let mut folder_contents_resource =
@@ -53,9 +59,15 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                     .map(|file| {
                         rsx! {
                             if file.is_file {
-                                File { file: file.clone(), current_path: path.clone() }
+                                File {
+                                    file: file.clone(),
+                                    current_path: path.clone(),
+                                }
                             } else {
-                                Folder { file: file.clone(), current_path: path.clone() }
+                                Folder {
+                                    file: file.clone(),
+                                    current_path: path.clone(),
+                                }
                             }
                         }
                     })
@@ -73,57 +85,83 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
     };
 
     rsx! {
-        div { class: "mt-4 grid h-min w-full auto-rows-min justify-items-end gap-x-4 gap-y-2 px-4",
-            div { class: "col-start-1 row-start-1 flex justify-self-start",
-                button {
-                    class: "flex text-align-center cursor-pointer items-center rounded-base border-2 border-black bg-main ml-3.5 w-18 px-4 py-2 my-auto text-sm font-base shadow-base transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
-                    onclick: move |_| {
-                        let mut new_path_vec = path.clone();
-                        if new_path_vec.pop().is_some() {
-                            router
-                                .push(Route::FileExplorer {
-                                    path: new_path_vec,
-                                });
-                        }
-                    },
-                    span { "Back" }
-                }
-            }
-            div { class: "col-start-2 row-start-1 flex flex-wrap items-center gap-x-4 gap-y-2 justify-self-end",
-                div {}
-                div {
-                    button {
-                        class: "flex text-align-center cursor-pointer items-center rounded-base border-2 border-black bg-main ml-3.5 w-18 px-4 py-2 my-auto text-sm font-base shadow-base transition-all hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none",
+        div { class: "w-full h-full bg-background text-foreground overflow-scroll",
+            Header {}
+            div { class: "mt-4 grid h-min w-full auto-rows-min justify-items-end gap-x-4 gap-y-2 px-4",
+                div { class: "col-start-1 row-start-1 flex justify-self-start",
+                    Button {
                         onclick: move |_| {
-                            app_state.write().create_folder_modal = true;
+                            let mut new_path_vec = path_clone.clone();
+                            if new_path_vec.pop().is_some() {
+                                router
+                                    .push(Route::FileExplorer {
+                                        path: new_path_vec,
+                                    });
+                            }
                         },
-                        "Create Folder"
+                        span { "Back" }
                     }
                 }
-                div {
-                    input {
-                        class: "hidden",
-                        r#type: "file",
-                        multiple: true,
-                        onchange: move |e| {
-                            let current_path = current_path.clone();
-                            async move {
-                                if let Some(file_engine) = &e.files() {
-                                    put_file(reqwest_client_context, current_path.clone(), file_engine).await.unwrap()
+                div { class: "col-start-2 row-start-1 flex flex-wrap items-center gap-x-4 gap-y-2 justify-self-end",
+                    div {}
+                    div {
+                        Button {
+                            onclick: move |_| {
+                                app_state.write().create_folder_modal = true;
+                            },
+                            "Create Folder"
+                        }
+                    }
+                    div {
+                        input {
+                            class: "hidden",
+                            id: "file-upload",
+                            r#type: "file",
+                            multiple: true,
+                            onchange: move |e| {
+                                let current_path = current_path.clone();
+                                async move {
+                                    put_file(reqwest_client_context, current_path.clone(), e.files())
+                                        .await
+                                        .unwrap();
+                                    app_state.write().needs_refetch = true;
                                 }
-                            }
+                            },
+                        }
+                        Button { class: "fit-content",
+                            label { r#for: "file-upload", "Upload Files" }
+                        }
+                    }
+                    div {
+                        input {
+                            class: "hidden",
+                            id: "folder-upload",
+                            r#type: "file",
+                            directory: true,
+                            onchange: move |e| {
+                                let current_path = current_path2.clone();
+                                async move {
+                                    put_file(reqwest_client_context, current_path.clone(), e.files())
+                                        .await
+                                        .unwrap();
+                                    app_state.write().needs_refetch = true;
+                                }
+                            },
+                        }
+                        Button { class: "fit-content",
+                            label { r#for: "folder-upload", "Upload Folder" }
                         }
                     }
                 }
             }
-        }
 
-        if create_folder_modal_state {
-            CreateFolderModal { current_path: path.clone() }
-        }
+            if create_folder_modal_state {
+                CreateFolderModal { current_path: path.clone() }
+            }
 
-        div { class: "h-full w-full px-4 py-4 gap-4 flex flex-row flex-wrap h-min items-center justify-items-center",
-            {folder_contents_for_display.into_iter()}
+            div { class: "h-full w-full px-4 py-4 flex flex-row flex-wrap h-min items-center justify-items-center",
+                {folder_contents_for_display.into_iter()}
+            }
         }
     }
 }

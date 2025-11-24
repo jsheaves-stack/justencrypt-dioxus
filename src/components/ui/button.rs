@@ -1,0 +1,133 @@
+#![allow(unused)]
+use dioxus::prelude::*;
+
+#[derive(Clone, Copy, PartialEq, Default, Debug)]
+pub enum ButtonVariant {
+    #[default]
+    Default,
+    Destructive,
+    Outline,
+    Secondary,
+    Ghost,
+    Link,
+}
+
+#[derive(Clone, Copy, PartialEq, Default, Debug)]
+pub enum ButtonSize {
+    #[default]
+    Default,
+    Sm,
+    Lg,
+    Icon,
+}
+
+#[derive(Clone, Copy, PartialEq, Default, Debug)]
+pub enum ButtonType {
+    #[default]
+    Button,
+    Submit,
+    Reset,
+}
+
+impl std::fmt::Display for ButtonType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ButtonType::Button => write!(f, "button"),
+            ButtonType::Submit => write!(f, "submit"),
+            ButtonType::Reset => write!(f, "reset"),
+        }
+    }
+}
+
+#[derive(Props, Clone, PartialEq)]
+pub struct ButtonProps {
+    #[props(default)]
+    pub variant: ButtonVariant,
+
+    #[props(default)]
+    pub size: ButtonSize,
+
+    #[props(default)]
+    pub r#type: ButtonType,
+
+    #[props(default)]
+    pub class: String,
+
+    #[props(default)]
+    pub disabled: bool,
+
+    #[props(default)]
+    pub loading: bool,
+
+    #[props(default)]
+    pub onclick: EventHandler<MouseEvent>,
+
+    pub children: Element,
+}
+
+fn LoaderIcon() -> Element {
+    rsx! {
+        svg {
+            xmlns: "http://www.w3.org/2000/svg",
+            width: "24",
+            height: "24",
+            view_box: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            stroke_width: "2",
+            stroke_linecap: "round",
+            stroke_linejoin: "round",
+            class: "mr-2 h-4 w-4 animate-spin",
+            path { d: "M21 12a9 9 0 1 1-6.219-8.56" }
+        }
+    }
+}
+
+#[component]
+pub fn Button(props: ButtonProps) -> Element {
+    let base_styles = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
+
+    let variant_styles = match props.variant {
+        ButtonVariant::Default => "bg-primary text-primary-foreground hover:opacity-90",
+        ButtonVariant::Destructive => "bg-destructive text-destructive-foreground hover:opacity-90",
+        ButtonVariant::Outline => {
+            "border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+        }
+        ButtonVariant::Secondary => "bg-secondary text-secondary-foreground hover:opacity-80",
+        ButtonVariant::Ghost => "hover:bg-accent hover:text-accent-foreground",
+        ButtonVariant::Link => "text-primary underline-offset-4 hover:underline",
+    };
+
+    let size_styles = match props.size {
+        ButtonSize::Default => "h-10 px-4 py-2",
+        ButtonSize::Sm => "h-9 rounded-md px-3",
+        ButtonSize::Lg => "h-11 rounded-md px-8",
+        ButtonSize::Icon => "h-10 w-10",
+    };
+
+    let final_class = format!(
+        "{} {} {} {}",
+        base_styles, variant_styles, size_styles, props.class
+    );
+
+    let is_disabled = props.disabled || props.loading;
+
+    rsx! {
+        button {
+            class: "{final_class}",
+            r#type: "{props.r#type}",
+            disabled: is_disabled,
+            onclick: move |evt| {
+                if !is_disabled {
+                    props.onclick.call(evt);
+                }
+            },
+
+            if props.loading {
+                LoaderIcon {}
+            }
+
+            {props.children}
+        }
+    }
+}

@@ -1,5 +1,11 @@
 use crate::{
-    components::file_explorer::{FolderItem, IMAGE_FORMATS},
+    components::{
+        file_explorer::{FolderItem, IMAGE_FORMATS},
+        ui::{
+            card::{Card, CardContent, CardFooter},
+            label::Label,
+        },
+    },
     API_URL,
 };
 use dioxus::prelude::*;
@@ -25,10 +31,24 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
     };
 
     rsx! {
-        div { class: "w-40 h-40 overflow-hidden rounded-base border-2 border-black bg-main font-base shadow-base",
-            img { class: "w-full h-24", src: "{thumbnail_url}" }
-            div { class: "text-sm w-full border-t-2 border-black p-2 truncate text-wrap text-ellipsis overflow-hidden",
-                "{file.file_name}"
+        div { class: "flex justify-center p-4 h-64 w-64",
+            Card { class: "w-full h-full grid grid-rows-[1fr,2em]",
+                CardContent { class: "p-4! pt-4 grid justify-items-center",
+                    img {
+                        class: "object-contain w-min h-full align-center",
+                        src: "{thumbnail_url}",
+                    }
+                }
+                CardFooter {
+                    div { class: "text-sm w-full h-8",
+                        Label {
+                            html_for: "{file.file_name}",
+                            tooltip: "{file.file_name}",
+                            class: "grid grid-cols-1 w-32 mx-auto",
+                            span { class: "truncate min-w-0 text-center h-6", "{file.file_name}" }
+                        }
+                    }
+                }
             }
         }
     }

@@ -1,29 +1,71 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  mode: "all",
   content: ["./src/**/*.{rs,html,css}", "./dist/**/*.html"],
   theme: {
+    container: {
+      center: true,
+      padding: "2rem",
+      screens: {
+        "2xl": "1400px",
+      },
+    },
     extend: {
       colors: {
-        bg: '#dfe5f2',
-        main: '#88aaee',
-        mainAccent: '#4d80e6', // not needed for shadcn
+        // REVERTED: Changed back to variables so dark mode works
+        primary: {
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
+        },
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        background: "var(--background)",
+        foreground: "var(--foreground)", // This is your main font color
+        secondary: {
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
+        },
+        destructive: {
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
+        },
+        muted: {
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)", // Use 'text-muted-foreground' for subtle text
+        },
+        accent: {
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
+        },
+        popover: {
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
+        },
+        card: {
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
+        },
       },
       borderRadius: {
-        base: '5px'
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
       },
-      boxShadow: {
-        base: '4px 4px 0px 0px rgba(0,0,0,1)',
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
       },
-      translate: {
-        boxShadowX: '4px',
-        boxShadowY: '4px',
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
       },
-      fontWeight: {
-        base: '500',
-        heading: '700',
-      }
-    }
+    },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 };

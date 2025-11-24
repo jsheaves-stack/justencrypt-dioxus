@@ -1,6 +1,7 @@
 {
   "devDependencies": {
-    "tailwindcss": "^3.4.3"
+    "tailwindcss": "^3.4.3",
+    "tailwindcss-animate": "^1.0.7"
   },
   "scripts": {
     "build:css": "tailwindcss -i ./input.css -o ./assets/tailwind.css"

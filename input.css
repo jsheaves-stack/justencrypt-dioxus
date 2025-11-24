@@ -1,3 +1,472 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+html,
+body,
+#main {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* -------------------------------------------------------------------------- */
+/* DEFAULT THEME (Zinc)                                                       */
+/* -------------------------------------------------------------------------- */
+:root {
+  --background: #ffffff;
+  --foreground: #09090b;
+  --card: #dbdbdb;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #18181b;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: #09090b;
+  /* Zinc 950 */
+  --foreground: #fafafa;
+
+  /* FIX: Card is now Zinc 900 (Lighter than bg), NOT pure white */
+  --card: #18181b;
+  --card-foreground: #fafafa;
+
+  --popover: #18181b;
+  /* Popover matches card */
+  --popover-foreground: #fafafa;
+
+  --primary: #fafafa;
+  --primary-foreground: #18181b;
+
+  --secondary: #27272a;
+  /* Zinc 800 */
+  --secondary-foreground: #fafafa;
+
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+
+  --destructive: #7f1d1d;
+  --destructive-foreground: #fafafa;
+
+  --border: #27272a;
+  /* Soft border */
+  --input: #27272a;
+  --ring: #d4d4d8;
+}
+
+/* -------------------------------------------------------------------------- */
+/* NAVY THEME (The "Dark Blue / Lighter Blue" look you asked for)             */
+/* -------------------------------------------------------------------------- */
+.theme-navy {
+  --background: #ffffff;
+  --foreground: #020817;
+  --card: #ffffff;
+  --card-foreground: #020817;
+  --popover: #ffffff;
+  --popover-foreground: #020817;
+  --primary: #0f172a;
+  --primary-foreground: #f8fafc;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #f1f5f9;
+  --accent-foreground: #0f172a;
+  --destructive: #ef4444;
+  --destructive-foreground: #f8fafc;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #020617;
+}
+
+.dark .theme-navy,
+.theme-navy.dark {
+  /* Deep Navy Background (Slate 950) */
+  --background: #020617;
+  --foreground: #f8fafc;
+
+  /* Lighter Navy Card (Slate 900) - Creates subtle contrast */
+  --card: #0f172a;
+  --card-foreground: #f8fafc;
+
+  --popover: #0f172a;
+  --popover-foreground: #f8fafc;
+
+  --primary: #f8fafc;
+  --primary-foreground: #020617;
+
+  --secondary: #1e293b;
+  /* Slate 800 */
+  --secondary-foreground: #f8fafc;
+
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+
+  --accent: #1e293b;
+  --accent-foreground: #f8fafc;
+
+  --destructive: #7f1d1d;
+  --destructive-foreground: #f8fafc;
+
+  --border: #1e293b;
+  /* Border matches secondary */
+  --input: #1e293b;
+  --ring: #cbd5e1;
+}
+
+/* -------------------------------------------------------------------------- */
+/* SLATE THEME                                                                */
+/* -------------------------------------------------------------------------- */
+.theme-slate {
+  --background: #ffffff;
+  --foreground: #020617;
+  --card: #ffffff;
+  --card-foreground: #020617;
+  --popover: #ffffff;
+  --popover-foreground: #020617;
+  --primary: #0f172a;
+  --primary-foreground: #f8fafc;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #f1f5f9;
+  --accent-foreground: #0f172a;
+  --destructive: #ef4444;
+  --destructive-foreground: #f8fafc;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #020617;
+}
+
+.dark .theme-slate,
+.theme-slate.dark {
+  --background: #020617;
+  --foreground: #f8fafc;
+
+  --card: #0f172a;
+  /* Lighter than bg */
+  --card-foreground: #f8fafc;
+
+  --popover: #0f172a;
+  --popover-foreground: #f8fafc;
+
+  --primary: #f8fafc;
+  --primary-foreground: #0f172a;
+
+  --secondary: #1e293b;
+  --secondary-foreground: #f8fafc;
+
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+
+  --accent: #1e293b;
+  --accent-foreground: #f8fafc;
+
+  --destructive: #7f1d1d;
+  --destructive-foreground: #f8fafc;
+
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #cbd5e1;
+}
+
+/* -------------------------------------------------------------------------- */
+/* STONE THEME                                                                */
+/* -------------------------------------------------------------------------- */
+.theme-stone {
+  --background: #ffffff;
+  --foreground: #0c0a09;
+  --card: #ffffff;
+  --card-foreground: #0c0a09;
+  --popover: #ffffff;
+  --popover-foreground: #0c0a09;
+  --primary: #1c1917;
+  --primary-foreground: #fafaf9;
+  --secondary: #f5f5f4;
+  --secondary-foreground: #1c1917;
+  --muted: #f5f5f4;
+  --muted-foreground: #78716c;
+  --accent: #f5f5f4;
+  --accent-foreground: #1c1917;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafaf9;
+  --border: #e7e5e4;
+  --input: #e7e5e4;
+  --ring: #0c0a09;
+}
+
+.dark .theme-stone,
+.theme-stone.dark {
+  --background: #0c0a09;
+  --foreground: #fafaf9;
+
+  --card: #1c1917;
+  /* Lighter (Warm Gray) */
+  --card-foreground: #fafaf9;
+
+  --popover: #1c1917;
+  --popover-foreground: #fafaf9;
+
+  --primary: #fafaf9;
+  --primary-foreground: #1c1917;
+
+  --secondary: #292524;
+  --secondary-foreground: #fafaf9;
+
+  --muted: #292524;
+  --muted-foreground: #a8a29e;
+
+  --accent: #292524;
+  --accent-foreground: #fafaf9;
+
+  --destructive: #7f1d1d;
+  --destructive-foreground: #fafaf9;
+
+  --border: #292524;
+  --input: #292524;
+  --ring: #d6d3d1;
+}
+
+/* -------------------------------------------------------------------------- */
+/* GRAY THEME                                                                 */
+/* -------------------------------------------------------------------------- */
+.theme-gray {
+  --background: #ffffff;
+  --foreground: #030712;
+  --card: #ffffff;
+  --card-foreground: #030712;
+  --popover: #ffffff;
+  --popover-foreground: #030712;
+  --primary: #111827;
+  --primary-foreground: #f9fafb;
+  --secondary: #f3f4f6;
+  --secondary-foreground: #111827;
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+  --accent: #f3f4f6;
+  --accent-foreground: #111827;
+  --destructive: #ef4444;
+  --destructive-foreground: #f9fafb;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #030712;
+}
+
+.dark .theme-gray,
+.theme-gray.dark {
+  --background: #030712;
+  --foreground: #f9fafb;
+
+  --card: #111827;
+  /* Cool Gray */
+  --card-foreground: #f9fafb;
+
+  --popover: #111827;
+  --popover-foreground: #f9fafb;
+
+  --primary: #f9fafb;
+  --primary-foreground: #111827;
+
+  --secondary: #1f2937;
+  --secondary-foreground: #f9fafb;
+
+  --muted: #1f2937;
+  --muted-foreground: #9ca3af;
+
+  --accent: #1f2937;
+  --accent-foreground: #f9fafb;
+
+  --destructive: #7f1d1d;
+  --destructive-foreground: #f9fafb;
+
+  --border: #1f2937;
+  --input: #1f2937;
+  --ring: #d1d5db;
+}
+
+/* -------------------------------------------------------------------------- */
+/* NEUTRAL THEME                                                              */
+/* -------------------------------------------------------------------------- */
+.theme-neutral {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #171717;
+  --primary-foreground: #fafafa;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f5f5f5;
+  --accent-foreground: #171717;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #0a0a0a;
+}
+
+.dark .theme-neutral,
+.theme-neutral.dark {
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+
+  --card: #171717;
+  /* True Neutral */
+  --card-foreground: #fafafa;
+
+  --popover: #171717;
+  --popover-foreground: #fafafa;
+
+  --primary: #fafafa;
+  --primary-foreground: #171717;
+
+  --secondary: #262626;
+  --secondary-foreground: #fafafa;
+
+  --muted: #262626;
+  --muted-foreground: #a3a3a3;
+
+  --accent: #262626;
+  --accent-foreground: #fafafa;
+
+  --destructive: #7f1d1d;
+  --destructive-foreground: #fafafa;
+
+  --border: #262626;
+  --input: #262626;
+  --ring: #d4d4d4;
+}
+
+/* -------------------------------------------------------------------------- */
+/* PRIMARY COLOR OVERRIDES (Can be mixed with above themes)                   */
+/* -------------------------------------------------------------------------- */
+
+/* Red */
+.theme-red {
+  --primary: #dc2626;
+  --primary-foreground: #fef2f2;
+  --ring: #dc2626;
+}
+
+.dark .theme-red,
+.theme-red.dark {
+  --primary: #dc2626;
+  --primary-foreground: #fef2f2;
+  --ring: #dc2626;
+}
+
+/* Rose */
+.theme-rose {
+  --primary: #e11d48;
+  --primary-foreground: #fff1f2;
+  --ring: #e11d48;
+}
+
+.dark .theme-rose,
+.theme-rose.dark {
+  --primary: #e11d48;
+  --primary-foreground: #fff1f2;
+  --ring: #e11d48;
+}
+
+/* Orange */
+.theme-orange {
+  --primary: #ea580c;
+  --primary-foreground: #fff7ed;
+  --ring: #ea580c;
+}
+
+.dark .theme-orange,
+.theme-orange.dark {
+  --primary: #ea580c;
+  --primary-foreground: #fff7ed;
+  --ring: #ea580c;
+}
+
+/* Green */
+.theme-green {
+  --primary: #16a34a;
+  --primary-foreground: #f0fdf4;
+  --ring: #16a34a;
+}
+
+.dark .theme-green,
+.theme-green.dark {
+  --primary: #16a34a;
+  --primary-foreground: #f0fdf4;
+  --ring: #16a34a;
+}
+
+/* Blue */
+.theme-blue {
+  --primary: #2563eb;
+  --primary-foreground: #eff6ff;
+  --ring: #2563eb;
+}
+
+.dark .theme-blue,
+.theme-blue.dark {
+  --primary: #2563eb;
+  --primary-foreground: #eff6ff;
+  --ring: #2563eb;
+}
+
+/* Yellow */
+.theme-yellow {
+  --primary: #ca8a04;
+  --primary-foreground: #fefce8;
+  --ring: #ca8a04;
+}
+
+.dark .theme-yellow,
+.theme-yellow.dark {
+  --primary: #facc15;
+  --primary-foreground: #422006;
+  --ring: #facc15;
+}
+
+/* Violet */
+.theme-violet {
+  --primary: #7c3aed;
+  --primary-foreground: #f5f3ff;
+  --ring: #7c3aed;
+}
+
+.dark .theme-violet,
+.theme-violet.dark {
+  --primary: #7c3aed;
+  --primary-foreground: #f5f3ff;
+  --ring: #7c3aed;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}

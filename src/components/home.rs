@@ -16,6 +16,7 @@ pub fn Home() -> Element {
         }
 
         let mut root_path = Vec::<String>::new();
+
         root_path.push(String::from(""));
 
         match get_folder(reqwest_client_context, root_path).await {
