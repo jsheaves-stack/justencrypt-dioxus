@@ -1,43 +1,28 @@
 #![allow(non_snake_case)]
 
-const LOG_LEVEL: Level = Level::DEBUG;
-
-mod global {
-    pub use crate::components::{file_explorer::FileExplorer, home::Home, login_form::Login};
-    pub use dioxus::prelude::*;
-    pub use tracing::Level;
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-mod desktop_only {
-    pub use dioxus_desktop::LogicalSize;
-    pub use dioxus_desktop::{Config, WindowBuilder};
-    pub use reqwest::{cookie::Jar, Client};
-    pub use std::sync::Arc;
-}
-
-#[cfg(target_arch = "wasm32")]
-mod web_only {
-    pub use reqwest::Client;
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-use desktop_only::*;
-#[cfg(target_arch = "wasm32")]
-use web_only::*;
-
-use global::*;
-
 mod components;
 mod requests;
 
+use components::{
+    file_explorer::FileExplorer, home::Home, login_form::Login, ui::context_menu::ContextMenuState,
+};
+use dioxus::prelude::*;
+use reqwest::Client;
+use tracing::Level;
+
+const LOG_LEVEL: Level = Level::DEBUG;
 pub const API_URL: &str = "http://localhost:8000";
 
-struct AppState {
-    _theme: String,
-    authenticated: bool,
-    create_folder_modal: bool,
-    needs_refetch: bool,
+pub struct AppState {
+    pub _theme: String,
+    pub authenticated: bool,
+    pub create_folder_modal: bool,
+    pub create_file_modal: bool,
+    pub edit_file_modal: Option<(String, Vec<String>)>,
+    pub rename_modal: Option<(String, Vec<String>, bool)>, // (old_name, path, is_file)
+    pub delete_modal: Option<(String, Vec<String>, bool)>, // (name, path, is_file)
+    pub photo_viewer_modal: Option<(String, String, String)>, // (file_name, thumbnail_url, image_url)
+    pub needs_refetch: bool,
 }
 
 static TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
@@ -46,7 +31,7 @@ static HEADER_SVG: Asset = asset!("/assets/header.svg");
 static FAVICON_ICO: Asset = asset!("/assets/favicon.ico");
 
 #[derive(Clone, Routable, Debug, PartialEq)]
-enum Route {
+pub enum Route {
     #[route("/")]
     Home {},
 
@@ -59,69 +44,54 @@ enum Route {
 }
 
 #[derive(Clone)]
-struct ReqwestClient(Client);
+pub struct ReqwestClient(pub Client);
 
-#[cfg(target_arch = "wasm32")]
 fn main() {
     dioxus_logger::init(LOG_LEVEL).expect("failed to init logger");
 
+    #[cfg(target_arch = "wasm32")]
     LaunchBuilder::web().launch(App);
-}
 
-#[cfg(not(target_arch = "wasm32"))]
-fn main() {
-    dioxus_logger::init(LOG_LEVEL).expect("failed to init logger");
-
+    #[cfg(not(target_arch = "wasm32"))]
     LaunchBuilder::desktop()
         .with_cfg(
-            Config::new()
+            dioxus_desktop::Config::new()
                 .with_window(
-                    WindowBuilder::new()
+                    dioxus_desktop::WindowBuilder::new()
                         .with_resizable(true)
                         .with_title("JustEncrypt")
-                        .with_inner_size(LogicalSize::new(880.0, 600.0)),
+                        .with_inner_size(dioxus_desktop::LogicalSize::new(880.0, 600.0)),
                 )
                 .with_resource_directory("assets"),
         )
-        .launch(App)
+        .launch(App);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 fn App() -> Element {
-    let jar = Arc::new(Jar::default());
-    let client = Client::builder().cookie_provider(jar).build().unwrap();
-    let app_state = AppState {
-        _theme: "light".to_string(),
-        authenticated: false,
-        create_folder_modal: false,
-        needs_refetch: false,
+    #[cfg(not(target_arch = "wasm32"))]
+    let client = {
+        let jar = std::sync::Arc::new(reqwest::cookie::Jar::default());
+        Client::builder().cookie_provider(jar).build().unwrap()
     };
 
-    use_context_provider(|| Signal::new(ReqwestClient(client)));
-    use_context_provider(|| Signal::new(app_state));
-
-    rsx! {
-        document::Stylesheet { href: TAILWIND_CSS }
-        document::Stylesheet { href: MAIN_CSS }
-        document::Stylesheet { href: HEADER_SVG }
-        document::Stylesheet { href: FAVICON_ICO }
-
-        div { class: "dark w-full h-full", Router::<Route> {} }
-    }
-}
-
-#[cfg(target_arch = "wasm32")]
-fn App() -> Element {
+    #[cfg(target_arch = "wasm32")]
     let client = Client::builder().build().unwrap();
+
     let app_state = AppState {
         _theme: "light".to_string(),
         authenticated: false,
         create_folder_modal: false,
+        create_file_modal: false,
+        edit_file_modal: None,
+        rename_modal: None,
+        delete_modal: None,
+        photo_viewer_modal: None,
         needs_refetch: false,
     };
 
     use_context_provider(|| Signal::new(ReqwestClient(client)));
     use_context_provider(|| Signal::new(app_state));
+    use_context_provider(|| Signal::new(ContextMenuState::default()));
 
     rsx! {
         document::Stylesheet { href: TAILWIND_CSS }
@@ -129,6 +99,8 @@ fn App() -> Element {
         document::Stylesheet { href: HEADER_SVG }
         document::Stylesheet { href: FAVICON_ICO }
 
-        div { class: "dark w-full h-full", Router::<Route> {} }
+        div { class: "dark w-full h-full", 
+            Router::<Route> {}
+        }
     }
 }

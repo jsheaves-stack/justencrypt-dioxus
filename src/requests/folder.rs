@@ -1,5 +1,6 @@
 use crate::{components::file_explorer::FolderItem, ReqwestClient, API_URL};
 use dioxus::signals::Signal;
+use super::RequestBuilderExt;
 
 pub async fn put_folder(
     reqwest_client_context: Signal<ReqwestClient>,
@@ -13,26 +14,41 @@ pub async fn put_folder(
         folder_name
     );
 
-    #[cfg(target_arch = "wasm32")]
     let resp = reqwest_client_context()
         .0
         .put(folder_url)
-        .fetch_credentials_include()
+        .with_credentials_if_wasm()
         .send()
         .await;
 
-    #[cfg(not(target_arch = "wasm32"))]
-    let resp = reqwest_client_context().0.put(folder_url).send().await;
+    match resp {
+        Ok(r) if r.status().is_success() => Ok(()),
+        _ => Err(()),
+    }
+}
+
+pub async fn delete_folder(
+    reqwest_client_context: Signal<ReqwestClient>,
+    current_path: Vec<String>,
+    folder_name: String,
+) -> Result<(), ()> {
+    let folder_url = format!(
+        "{}/folder/{}/{}",
+        API_URL,
+        current_path.join("/"),
+        folder_name
+    );
+
+    let resp = reqwest_client_context()
+        .0
+        .delete(folder_url)
+        .with_credentials_if_wasm()
+        .send()
+        .await;
 
     match resp {
-        Ok(r) => {
-            if r.status().is_success() {
-                Ok(())
-            } else {
-                Err(())
-            }
-        }
-        Err(_err) => Err(()),
+        Ok(r) if r.status().is_success() => Ok(()),
+        _ => Err(()),
     }
 }
 
@@ -42,38 +58,23 @@ pub async fn get_folder(
 ) -> Result<Vec<FolderItem>, ()> {
     let folder_url = format!("{}/folder/{}", API_URL, current_path.join("/"));
 
-    #[cfg(target_arch = "wasm32")]
     let resp = reqwest_client_context()
         .0
         .get(folder_url)
-        .fetch_credentials_include()
+        .with_credentials_if_wasm()
         .send()
         .await;
 
-    #[cfg(not(target_arch = "wasm32"))]
-    let resp = reqwest_client_context().0.get(folder_url).send().await;
-
-    let folders = match resp {
-        Ok(r) => {
-            if r.status().is_success() {
-                let response_string = r.text().await.unwrap();
-
-                let folders: Vec<FolderItem> =
-                    serde_json::from_str(response_string.as_str()).unwrap();
-
-                Ok(folders)
-            } else {
-                Err(())
-            }
+    match resp {
+        Ok(r) if r.status().is_success() => {
+            let response_string = r.text().await.map_err(|_| ())?;
+            let folders: Vec<FolderItem> = serde_json::from_str(&response_string).map_err(|_| ())?;
+            Ok(folders)
         }
-        Err(_err) => {
-            tracing::error!("Fetch folder failed: {}", _err);
+        Ok(_) => Err(()),
+        Err(e) => {
+            tracing::error!("Fetch folder failed: {}", e);
             Err(())
         }
-    };
-
-    match folders {
-        Ok(f) => Ok(f),
-        Err(_) => Err(()),
     }
 }

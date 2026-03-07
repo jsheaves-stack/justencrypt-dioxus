@@ -1,5 +1,6 @@
 use crate::{components::login_form::LoginForm, ReqwestClient, API_URL};
 use dioxus::signals::Signal;
+use super::RequestBuilderExt;
 
 pub async fn create_session(
     reqwest_client_context: Signal<ReqwestClient>,
@@ -7,27 +8,19 @@ pub async fn create_session(
 ) -> Result<(), ()> {
     let create_session_url = format!("{}/session/create", API_URL);
 
-    #[cfg(target_arch = "wasm32")]
     let resp = reqwest_client_context()
         .0
         .post(create_session_url)
-        .fetch_credentials_include()
-        .json(&login_form)
-        .send()
-        .await;
-
-    #[cfg(not(target_arch = "wasm32"))]
-    let resp = reqwest_client_context()
-        .0
-        .post(create_session_url)
+        .with_credentials_if_wasm()
         .json(&login_form)
         .send()
         .await;
 
     match resp {
-        Ok(_) => Ok(()),
-        Err(_err) => {
-            tracing::error!("Login failed: {}", _err);
+        Ok(r) if r.status().is_success() => Ok(()),
+        Ok(_) => Err(()),
+        Err(err) => {
+            tracing::error!("Login failed: {}", err);
             Err(())
         }
     }
@@ -36,25 +29,18 @@ pub async fn create_session(
 pub async fn destroy_session(reqwest_client_context: Signal<ReqwestClient>) -> Result<(), ()> {
     let destroy_session_url = format!("{}/session/destroy", API_URL);
 
-    #[cfg(target_arch = "wasm32")]
     let resp = reqwest_client_context()
         .0
         .post(destroy_session_url)
-        .fetch_credentials_include()
-        .send()
-        .await;
-
-    #[cfg(not(target_arch = "wasm32"))]
-    let resp = reqwest_client_context()
-        .0
-        .post(destroy_session_url)
+        .with_credentials_if_wasm()
         .send()
         .await;
 
     match resp {
-        Ok(_) => Ok(()),
-        Err(_err) => {
-            tracing::error!("Logout failed: {}", _err);
+        Ok(r) if r.status().is_success() => Ok(()),
+        Ok(_) => Err(()),
+        Err(err) => {
+            tracing::error!("Logout failed: {}", err);
             Err(())
         }
     }

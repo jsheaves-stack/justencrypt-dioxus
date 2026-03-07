@@ -5,3 +5,8 @@ pub mod folder;
 pub mod home;
 pub mod login_form;
 pub mod ui;
+pub mod edit_file_modal;
+pub mod rename_modal;
+pub mod delete_modal;
+pub mod create_file_modal;
+pub mod photo_viewer_modal;

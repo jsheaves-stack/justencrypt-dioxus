@@ -3,12 +3,13 @@
 use crate::{
     components::ui::button::{Button, ButtonSize, ButtonVariant},
     requests::session::destroy_session,
-    ReqwestClient,
+    ReqwestClient, Route,
 };
 use dioxus::prelude::*;
 
 #[component]
 pub fn Header() -> Element {
+    let router = router();
     let mut is_menu_open = use_signal(|| false);
     let mut app_state = use_context::<Signal<crate::AppState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
@@ -23,9 +24,14 @@ pub fn Header() -> Element {
         header { class: "sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
             div { class: "flex h-14 w-full p-4 items-center",
                 div { class: "mr-4 hidden md:flex",
-                    a {
-                        class: "mr-6 flex items-center space-x-2 font-bold",
-                        href: "/",
+                    span {
+                        class: "mr-6 flex items-center space-x-2 font-bold cursor-pointer",
+                        onclick: move |_| {
+                            router
+                                .push(Route::FileExplorer {
+                                    path: Vec::<String>::new(),
+                                });
+                        },
                         svg {
                             xmlns: "http://www.w3.org/2000/svg",
                             view_box: "0 0 24 24",

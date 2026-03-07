@@ -1,4 +1,4 @@
-use crate::{requests::folder::get_folder, ReqwestClient, Route};
+use crate::{components::ui::context_menu::ContextMenu, requests::folder::get_folder, ReqwestClient, Route};
 use dioxus::prelude::*;
 
 #[component]
@@ -47,6 +47,7 @@ pub fn Home() -> Element {
         } else {
             rsx! {
                 Outlet::<Route> {}
+                ContextMenu {}
             }
         }
     } else {
