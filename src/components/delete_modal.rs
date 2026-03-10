@@ -19,8 +19,23 @@ pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> El
     let is_file_clone = is_file.clone();
 
     rsx! {
-        div { class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm",
-            div { class: "relative flex w-[400px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
+        div { 
+            class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none",
+            tabindex: "0",
+            onmounted: move |e| async move {
+                let _ = e.set_focus(true).await;
+            },
+            onkeydown: move |e| {
+                if e.key().to_string() == "Escape" {
+                    app_state.write().delete_modal = None;
+                }
+            },
+            onclick: move |_| {
+                app_state.write().delete_modal = None;
+            },
+            div { 
+                class: "relative flex w-[400px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
+                onclick: move |e| e.stop_propagation(),
                 div { class: "flex justify-between items-center mb-4",
                     h2 { class: "text-xl font-semibold text-destructive", "Delete ", {if is_file_clone { "File" } else { "Folder" }} }
                     button {
@@ -48,6 +63,7 @@ pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> El
                 div { class: "flex justify-end mt-2 gap-2",
                     Button {
                         variant: ButtonVariant::Outline,
+                        autofocus: true,
                         onclick: move |_| {
                             app_state.write().delete_modal = None;
                         },

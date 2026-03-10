@@ -1,4 +1,4 @@
-use crate::{ReqwestClient, API_URL};
+use crate::{ReqwestClient, api_url};
 use dioxus::{html::FileData, signals::Signal};
 use super::RequestBuilderExt;
 
@@ -19,7 +19,7 @@ pub async fn patch_file(
 ) -> Result<(), ()> {
     let file_url = format!(
         "{}/file/{}/{}",
-        API_URL,
+        api_url(),
         current_path.join("/"),
         old_file_name
     );
@@ -50,7 +50,7 @@ pub async fn delete_file(
 ) -> Result<(), ()> {
     let file_url = format!(
         "{}/file/{}/{}",
-        API_URL,
+        api_url(),
         current_path.join("/"),
         file_name
     );
@@ -75,7 +75,7 @@ pub async fn get_file_text(
 ) -> Result<String, ()> {
     let file_url = format!(
         "{}/file/{}/{}",
-        API_URL,
+        api_url(),
         current_path.join("/"),
         file_name
     );
@@ -103,7 +103,7 @@ pub async fn put_file_text(
 ) -> Result<(), ()> {
     let file_url = format!(
         "{}/file/{}/{}",
-        API_URL,
+        api_url(),
         current_path.join("/"),
         file_name
     );
@@ -133,7 +133,7 @@ pub async fn put_file(
 
         let file_url = format!(
             "{}/file/{}/{}",
-            API_URL,
+            api_url(),
             current_path.join("/"),
             file_path_str
         );

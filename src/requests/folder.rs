@@ -1,4 +1,4 @@
-use crate::{components::file_explorer::FolderItem, ReqwestClient, API_URL};
+use crate::{components::file_explorer::FolderItem, ReqwestClient, api_url};
 use dioxus::signals::Signal;
 use super::RequestBuilderExt;
 
@@ -9,7 +9,7 @@ pub async fn put_folder(
 ) -> Result<(), ()> {
     let folder_url = format!(
         "{}/folder/{}/{}",
-        API_URL,
+        api_url(),
         current_path.join("/"),
         folder_name
     );
@@ -34,7 +34,7 @@ pub async fn delete_folder(
 ) -> Result<(), ()> {
     let folder_url = format!(
         "{}/folder/{}/{}",
-        API_URL,
+        api_url(),
         current_path.join("/"),
         folder_name
     );
@@ -56,7 +56,7 @@ pub async fn get_folder(
     reqwest_client_context: Signal<ReqwestClient>,
     current_path: Vec<String>,
 ) -> Result<Vec<FolderItem>, ()> {
-    let folder_url = format!("{}/folder/{}", API_URL, current_path.join("/"));
+    let folder_url = format!("{}/folder/{}", api_url(), current_path.join("/"));
 
     let resp = reqwest_client_context()
         .0

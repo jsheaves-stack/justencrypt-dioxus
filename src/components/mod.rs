@@ -10,3 +10,4 @@ pub mod rename_modal;
 pub mod delete_modal;
 pub mod create_file_modal;
 pub mod photo_viewer_modal;
+pub mod test_wheel;

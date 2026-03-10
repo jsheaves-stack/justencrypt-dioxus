@@ -20,8 +20,20 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
     let is_file_clone = is_file.clone();
 
     rsx! {
-        div { class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm",
-            div { class: "relative flex w-[400px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
+        div { 
+            class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none",
+            tabindex: "-1",
+            onkeydown: move |e| {
+                if e.key().to_string() == "Escape" {
+                    app_state.write().rename_modal = None;
+                }
+            },
+            onclick: move |_| {
+                app_state.write().rename_modal = None;
+            },
+            div { 
+                class: "relative flex w-[400px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
+                onclick: move |e| e.stop_propagation(),
                 div { class: "flex justify-between items-center mb-4",
                     h2 { class: "text-xl font-semibold", "Rename ", {if is_file_clone { "File" } else { "Folder" }} }
                     button {
@@ -39,6 +51,10 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
                         input {
                             class: "h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                             r#type: "text",
+                            autofocus: true,
+                            onmounted: move |e| async move {
+                                let _ = e.set_focus(true).await;
+                            },
                             value: "{new_name.read()}",
                             oninput: move |e| {
                                 new_name.set(e.value());

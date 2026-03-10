@@ -11,7 +11,25 @@ use reqwest::Client;
 use tracing::Level;
 
 const LOG_LEVEL: Level = Level::DEBUG;
-pub const API_URL: &str = "http://localhost:8000";
+
+pub fn api_url() -> &'static str {
+    static API_URL: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    API_URL.get_or_init(|| {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if let Ok(val) = js_sys::Reflect::get(&js_sys::global(), &wasm_bindgen::JsValue::from_str("API_URL")) {
+                if let Some(s) = val.as_string() {
+                    return s;
+                }
+            }
+            "http://localhost:8000".to_string()
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            std::env::var("API_URL").unwrap_or_else(|_| "http://localhost:8000".to_string())
+        }
+    })
+}
 
 pub struct AppState {
     pub _theme: String,
@@ -21,7 +39,7 @@ pub struct AppState {
     pub edit_file_modal: Option<(String, Vec<String>)>,
     pub rename_modal: Option<(String, Vec<String>, bool)>, // (old_name, path, is_file)
     pub delete_modal: Option<(String, Vec<String>, bool)>, // (name, path, is_file)
-    pub photo_viewer_modal: Option<(String, String, String)>, // (file_name, thumbnail_url, image_url)
+    pub photo_viewer_modal: Option<(String, Vec<String>)>, // (file_name, current_path)
     pub needs_refetch: bool,
 }
 

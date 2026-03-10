@@ -1,6 +1,6 @@
 use crate::{
     components::{
-        file_explorer::{FolderItem, IMAGE_FORMATS},
+        file_explorer::{FolderItem, IMAGE_FORMATS, VIDEO_FORMATS},
         ui::{
             card::{Card, CardContent, CardFooter},
             context_menu::{ContextMenuState, ContextMenuTarget},
@@ -8,7 +8,7 @@ use crate::{
             label::Label,
         },
     },
-    API_URL, AppState,
+    api_url, AppState,
 };
 use dioxus::prelude::*;
 
@@ -19,28 +19,28 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
     
     let file_clone = file.clone();
     let current_path_clone = current_path.clone();
+    let current_path_clone_click = current_path.clone();
 
-    let (image_url, thumbnail_url) = match file.file_extension.as_deref() {
-        Some(ext) if IMAGE_FORMATS.contains(&ext.to_uppercase().as_str()) => (
-            format!(
-                "{}/file/{}{}",
-                API_URL,
-                if current_path.is_empty() { String::new() } else { format!("{}/", current_path.join("/")) },
-                file.file_name
-            ),
-            format!(
-                "{}/thumbnail/{}{}",
-                API_URL,
-                if current_path.is_empty() { String::new() } else { format!("{}/", current_path.join("/")) },
-                file.file_name
-            ),
-        ),
-        _ => (String::new(), String::new()),
+    let is_media = match file.file_extension.as_deref() {
+        Some(ext) => {
+            let ext_upper = ext.to_uppercase();
+            IMAGE_FORMATS.contains(&ext_upper.as_str()) || VIDEO_FORMATS.contains(&ext_upper.as_str())
+        },
+        _ => false,
     };
 
-    let is_image = !image_url.is_empty();
-    let image_url_clone = image_url.clone();
-    let thumbnail_url_clone = thumbnail_url.clone();
+    let thumbnail_url = match is_media {
+        true => {
+            format!(
+                "{}/thumbnail/{}{}",
+                api_url(),
+                if current_path.is_empty() { String::new() } else { format!("{}/", current_path.join("/")) },
+                file.file_name
+            )
+        },
+        false => String::new(),
+    };
+
     let display_name = file.file_name.clone();
 
     rsx! {
@@ -56,20 +56,25 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
                 state.position = (coords.x, coords.y);
             },
             Card { 
-                class: if is_image { "w-full h-full grid grid-rows-[1fr,2em] cursor-pointer" } else { "w-full h-full grid grid-rows-[1fr,2em]" },
+                class: if is_media { "w-full h-full grid grid-rows-[1fr,2em] cursor-pointer" } else { "w-full h-full grid grid-rows-[1fr,2em]" },
                 onclick: move |_| {
-                    if is_image {
+                    if is_media {
                         app_state.write().photo_viewer_modal = Some((
                             display_name.clone(),
-                            thumbnail_url_clone.clone(),
-                            image_url_clone.clone()
+                            current_path_clone_click.clone(),
                         ));
                     }
                 },
-                CardContent { class: "p-4! pt-4 grid justify-items-center",
-                    Image {
-                        class: "object-contain w-min h-full align-center",
-                        src: "{thumbnail_url}",
+                CardContent { class: "p-4! pt-4 flex flex-col justify-center items-center h-full w-full overflow-hidden",
+                    if is_media {
+                        Image {
+                            class: "object-contain w-min h-full align-center",
+                            src: "{thumbnail_url}",
+                        }
+                    } else {
+                        div { class: "flex items-center justify-center w-3/4 h-3/4 bg-secondary/20 rounded-xl border-2 border-border text-muted-foreground font-bold text-3xl uppercase tracking-wider shadow-inner",
+                            "{file.file_extension.as_deref().unwrap_or(\"FILE\")}"
+                        }
                     }
                 }
                 CardFooter {

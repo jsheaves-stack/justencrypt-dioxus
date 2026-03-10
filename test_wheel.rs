@@ -1,10 +1,12 @@
 use dioxus::prelude::*;
-fn test() {
-    let _ = rsx! {
+
+#[component]
+pub fn Test() -> Element {
+    rsx! {
         div {
-            onwheel: move |e| {
-                let _ = e.delta();
+            ondocumentkeydown: move |e| {
+                println!("{:?}", e.key());
             }
         }
-    };
+    }
 }

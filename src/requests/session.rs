@@ -1,4 +1,4 @@
-use crate::{components::login_form::LoginForm, ReqwestClient, API_URL};
+use crate::{components::login_form::LoginForm, ReqwestClient, api_url};
 use dioxus::signals::Signal;
 use super::RequestBuilderExt;
 
@@ -6,7 +6,7 @@ pub async fn create_session(
     reqwest_client_context: Signal<ReqwestClient>,
     login_form: LoginForm,
 ) -> Result<(), ()> {
-    let create_session_url = format!("{}/session/create", API_URL);
+    let create_session_url = format!("{}/session/create", api_url());
 
     let resp = reqwest_client_context()
         .0
@@ -27,7 +27,7 @@ pub async fn create_session(
 }
 
 pub async fn destroy_session(reqwest_client_context: Signal<ReqwestClient>) -> Result<(), ()> {
-    let destroy_session_url = format!("{}/session/destroy", API_URL);
+    let destroy_session_url = format!("{}/session/destroy", api_url());
 
     let resp = reqwest_client_context()
         .0

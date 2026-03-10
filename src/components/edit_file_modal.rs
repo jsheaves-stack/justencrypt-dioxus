@@ -28,8 +28,20 @@ pub fn EditFileModal(file_name: String, current_path: Vec<String>) -> Element {
     }));
 
     rsx! {
-        div { class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm",
-            div { class: "relative flex w-11/12 max-w-5xl h-5/6 flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
+        div { 
+            class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none",
+            tabindex: "-1",
+            onkeydown: move |e| {
+                if e.key().to_string() == "Escape" {
+                    app_state.write().edit_file_modal = None;
+                }
+            },
+            onclick: move |_| {
+                app_state.write().edit_file_modal = None;
+            },
+            div { 
+                class: "relative flex w-11/12 max-w-5xl h-5/6 flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
+                onclick: move |e| e.stop_propagation(),
                 div { class: "flex justify-between items-center mb-4",
                     h2 { class: "text-xl font-semibold", "Editing: {file_name}" }
                     button {
@@ -45,6 +57,10 @@ pub fn EditFileModal(file_name: String, current_path: Vec<String>) -> Element {
                     if let Some(content) = file_content.read().as_ref() {
                         textarea {
                             class: "w-full h-full flex-grow resize-none rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 font-mono",
+                            autofocus: true,
+                            onmounted: move |e| async move {
+                                let _ = e.set_focus(true).await;
+                            },
                             value: "{content}",
                             oninput: move |e| {
                                 file_content.set(Some(e.value()));

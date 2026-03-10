@@ -21,8 +21,20 @@ pub fn CreateFileModal(current_path: Vec<String>) -> Element {
     let current_path_clone = current_path.clone();
 
     rsx! {
-        div { class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm",
-            div { class: "relative flex w-11/12 max-w-5xl h-5/6 flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
+        div { 
+            class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none",
+            tabindex: "-1",
+            onkeydown: move |e| {
+                if e.key().to_string() == "Escape" {
+                    app_state.write().create_file_modal = false;
+                }
+            },
+            onclick: move |_| {
+                app_state.write().create_file_modal = false;
+            },
+            div { 
+                class: "relative flex w-11/12 max-w-5xl h-5/6 flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
+                onclick: move |e| e.stop_propagation(),
                 div { class: "flex justify-between items-center mb-4",
                     h2 { class: "text-xl font-semibold", "Create New File" }
                     button {
@@ -39,6 +51,10 @@ pub fn CreateFileModal(current_path: Vec<String>) -> Element {
                     input {
                         class: "h-10 flex-grow rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                         r#type: "text",
+                        autofocus: true,
+                        onmounted: move |e| async move {
+                            let _ = e.set_focus(true).await;
+                        },
                         placeholder: "my_new_file",
                         value: "{file_name.read()}",
                         oninput: move |e| {

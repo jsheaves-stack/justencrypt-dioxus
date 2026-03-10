@@ -60,6 +60,9 @@ pub struct ButtonProps {
     pub loading: bool,
 
     #[props(default)]
+    pub autofocus: bool,
+
+    #[props(default)]
     pub onclick: EventHandler<MouseEvent>,
 
     pub children: Element,
@@ -117,6 +120,7 @@ pub fn Button(props: ButtonProps) -> Element {
             class: "{final_class}",
             r#type: "{props.r#type}",
             disabled: is_disabled,
+            autofocus: props.autofocus,
             onclick: move |evt| {
                 if !is_disabled {
                     props.onclick.call(evt);

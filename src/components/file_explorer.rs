@@ -17,6 +17,7 @@ use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub const IMAGE_FORMATS: [&str; 8] = ["APNG", "AVIF", "GIF", "JPG", "JPEG", "PNG", "SVG", "WebP"];
+pub const VIDEO_FORMATS: [&str; 6] = ["MP4", "WEBM", "OGG", "MOV", "AVI", "MKV"];
 
 pub const EDITABLE_FORMATS: [&str; 50] = [
     "TXT", "MD", "JSON", "YAML", "YML", "XML", "HTML", "CSS", "JS", "JSX", "TS", "TSX", "PY", "RB",
@@ -195,8 +196,8 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                 DeleteModal { name, current_path: file_path, is_file }
             }
 
-            if let Some((file_name, thumbnail_url, image_url)) = app_state.read().photo_viewer_modal.clone() {
-                PhotoViewerModal { file_name, thumbnail_url, image_url }
+            if let Some((file_name, file_path)) = app_state.read().photo_viewer_modal.clone() {
+                PhotoViewerModal { file_name, current_path: file_path }
             }
 
             div { class: "h-full w-full px-4 py-4 flex flex-row flex-wrap h-min items-center justify-items-center",
