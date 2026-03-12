@@ -1,0 +1,27 @@
+version: 44
+jobs:
+- name: build
+  steps:
+  - type: CheckoutStep
+    name: Checkout
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: BuildImageStep
+    name: Docker
+    output:
+      type: RegistryOutput
+      tags: '@server@/@project_path@/@project_name@:latest'
+    registryLogins:
+    - registryUrl: '@server_url@'
+      userName: '@job_token@'
+      passwordSecret: publish_token
+    condition: SUCCESSFUL
+    optional: false
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 14400
