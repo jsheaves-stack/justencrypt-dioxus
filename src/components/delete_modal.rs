@@ -3,14 +3,14 @@ use dioxus::prelude::*;
 use crate::{
     components::ui::button::{Button, ButtonVariant},
     requests::{file::delete_file, folder::delete_folder},
-    ReqwestClient, AppState,
+    AppState, ReqwestClient,
 };
 
 #[component]
 pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> Element {
     let mut app_state = use_context::<Signal<AppState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
-    
+
     let mut is_deleting = use_signal(|| false);
     let mut error_msg = use_signal::<Option<String>>(|| None);
 
@@ -19,7 +19,7 @@ pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> El
     let is_file_clone = is_file.clone();
 
     rsx! {
-        div { 
+        div {
             class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none",
             tabindex: "0",
             onmounted: move |e| async move {
@@ -33,7 +33,7 @@ pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> El
             onclick: move |_| {
                 app_state.write().delete_modal = None;
             },
-            div { 
+            div {
                 class: "relative flex w-[400px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
                 onclick: move |e| e.stop_propagation(),
                 div { class: "flex justify-between items-center mb-4",
@@ -46,7 +46,7 @@ pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> El
                         "✕"
                     }
                 }
-                
+
                 div { class: "flex flex-col gap-4 my-4",
                     p {
                         "Are you sure you want to permanently delete the ",
@@ -75,7 +75,7 @@ pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> El
                             let current_path = current_path_clone.clone();
                             let target_name = name_clone.clone();
                             let is_file_flag = is_file_clone.clone();
-                            
+
                             is_deleting.set(true);
                             spawn(async move {
                                 let result = if is_file_flag {

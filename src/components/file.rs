@@ -1,4 +1,5 @@
 use crate::{
+    api_url,
     components::{
         file_explorer::{FolderItem, IMAGE_FORMATS, VIDEO_FORMATS},
         ui::{
@@ -8,7 +9,7 @@ use crate::{
             label::Label,
         },
     },
-    api_url, AppState,
+    AppState,
 };
 use dioxus::prelude::*;
 
@@ -16,7 +17,7 @@ use dioxus::prelude::*;
 pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
     let mut context_menu = use_context::<Signal<ContextMenuState>>();
     let mut app_state = use_context::<Signal<AppState>>();
-    
+
     let file_clone = file.clone();
     let current_path_clone = current_path.clone();
     let current_path_clone_click = current_path.clone();
@@ -24,8 +25,9 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
     let is_media = match file.file_extension.as_deref() {
         Some(ext) => {
             let ext_upper = ext.to_uppercase();
-            IMAGE_FORMATS.contains(&ext_upper.as_str()) || VIDEO_FORMATS.contains(&ext_upper.as_str())
-        },
+            IMAGE_FORMATS.contains(&ext_upper.as_str())
+                || VIDEO_FORMATS.contains(&ext_upper.as_str())
+        }
         _ => false,
     };
 
@@ -34,10 +36,14 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
             format!(
                 "{}/thumbnail/{}{}",
                 api_url(),
-                if current_path.is_empty() { String::new() } else { format!("{}/", current_path.join("/")) },
+                if current_path.is_empty() {
+                    String::new()
+                } else {
+                    format!("{}/", current_path.join("/"))
+                },
                 file.file_name
             )
-        },
+        }
         false => String::new(),
     };
 
@@ -55,7 +61,7 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
                 state.target = ContextMenuTarget::File(file_clone.clone(), current_path_clone.clone());
                 state.position = (coords.x, coords.y);
             },
-            Card { 
+            Card {
                 class: if is_media { "w-full h-full grid grid-rows-[1fr,2em] cursor-pointer" } else { "w-full h-full grid grid-rows-[1fr,2em]" },
                 onclick: move |_| {
                     if is_media {

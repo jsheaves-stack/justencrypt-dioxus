@@ -1,6 +1,6 @@
-use crate::{ReqwestClient, api_url};
-use dioxus::{html::FileData, signals::Signal};
 use super::RequestBuilderExt;
+use crate::{api_url, ReqwestClient};
+use dioxus::{html::FileData, signals::Signal};
 
 use serde::Serialize;
 
@@ -88,9 +88,7 @@ pub async fn get_file_text(
         .await;
 
     match resp {
-        Ok(r) if r.status().is_success() => {
-            r.text().await.map_err(|_| ())
-        }
+        Ok(r) if r.status().is_success() => r.text().await.map_err(|_| ()),
         _ => Err(()),
     }
 }

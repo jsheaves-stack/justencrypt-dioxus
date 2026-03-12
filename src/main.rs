@@ -17,7 +17,10 @@ pub fn api_url() -> &'static str {
     API_URL.get_or_init(|| {
         #[cfg(target_arch = "wasm32")]
         {
-            if let Ok(val) = js_sys::Reflect::get(&js_sys::global(), &wasm_bindgen::JsValue::from_str("API_URL")) {
+            if let Ok(val) = js_sys::Reflect::get(
+                &js_sys::global(),
+                &wasm_bindgen::JsValue::from_str("API_URL"),
+            ) {
                 if let Some(s) = val.as_string() {
                     return s;
                 }
@@ -117,7 +120,7 @@ fn App() -> Element {
         document::Stylesheet { href: HEADER_SVG }
         document::Stylesheet { href: FAVICON_ICO }
 
-        div { class: "dark w-full h-full", 
+        div { class: "dark w-full h-full",
             Router::<Route> {}
         }
     }

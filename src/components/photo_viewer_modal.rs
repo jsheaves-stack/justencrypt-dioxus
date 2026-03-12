@@ -1,9 +1,10 @@
 use dioxus::prelude::*;
 
 use crate::{
+    api_url,
     components::file_explorer::{IMAGE_FORMATS, VIDEO_FORMATS},
     requests::folder::get_folder,
-    ReqwestClient, AppState, api_url,
+    AppState, ReqwestClient,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use base64::engine::{general_purpose, Engine};
@@ -14,15 +15,16 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
 
     let mut scale = use_signal(|| 1.0f64);
-    
+
     // Fetch folder contents once when modal is opened
     let current_path_for_resource = current_path.clone();
-    let folder_contents_data = use_resource(use_reactive!(|(current_path_for_resource, reqwest_client_context)| {
+    let folder_contents_data = use_resource(use_reactive!(|(
+        current_path_for_resource,
+        reqwest_client_context,
+    )| {
         let path_clone = current_path_for_resource.clone();
         let client = reqwest_client_context;
-        async move {
-            get_folder(client, path_clone).await
-        }
+        async move { get_folder(client, path_clone).await }
     }));
 
     let media_files = use_memo(move || {
@@ -32,7 +34,9 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                 if file.is_file {
                     if let Some(ext) = &file.file_extension {
                         let ext_upper = ext.to_uppercase();
-                        if IMAGE_FORMATS.contains(&ext_upper.as_str()) || VIDEO_FORMATS.contains(&ext_upper.as_str()) {
+                        if IMAGE_FORMATS.contains(&ext_upper.as_str())
+                            || VIDEO_FORMATS.contains(&ext_upper.as_str())
+                        {
                             media.push(file.clone());
                         }
                     }
@@ -54,12 +58,15 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
 
     let (current_file, has_next, has_prev) = {
         let files = media_files.read();
-        let current_index = files.iter().position(|f| f.file_name == active_file_name).unwrap_or(0);
+        let current_index = files
+            .iter()
+            .position(|f| f.file_name == active_file_name)
+            .unwrap_or(0);
         let current_file = files.get(current_index).cloned();
-        
+
         let has_next = current_index + 1 < files.len();
         let has_prev = current_index > 0;
-        
+
         (current_file, has_next, has_prev)
     };
 
@@ -70,8 +77,12 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
         false
     });
 
-    let path_str = if current_path.is_empty() { String::new() } else { format!("{}/", current_path.join("/")) };
-    
+    let path_str = if current_path.is_empty() {
+        String::new()
+    } else {
+        format!("{}/", current_path.join("/"))
+    };
+
     let image_url = current_file.as_ref().map_or(String::new(), |f| {
         format!("{}/file/{}{}", api_url(), path_str, f.file_name)
     });
@@ -81,7 +92,11 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
     });
 
     let image_url_for_resource = image_url.clone();
-    let full_image_data = use_resource(use_reactive!(|(image_url_for_resource, is_video, reqwest_client_context)| {
+    let full_image_data = use_resource(use_reactive!(|(
+        image_url_for_resource,
+        is_video,
+        reqwest_client_context,
+    )| {
         let url = image_url_for_resource.clone();
         let client = reqwest_client_context;
         async move {
@@ -91,7 +106,12 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
             let resp = client.read().0.get(&url).send().await;
             match resp {
                 Ok(r) => {
-                    let mime = r.headers().get("content-type").and_then(|v| v.to_str().ok()).unwrap_or("image/jpeg").to_string();
+                    let mime = r
+                        .headers()
+                        .get("content-type")
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("image/jpeg")
+                        .to_string();
                     match r.bytes().await {
                         Ok(b) => Some((url, mime, b)),
                         Err(_) => None,
@@ -103,7 +123,11 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
     }));
 
     let thumb_url_for_resource = thumbnail_url.clone();
-    let thumb_image_data = use_resource(use_reactive!(|(thumb_url_for_resource, is_video, reqwest_client_context)| {
+    let thumb_image_data = use_resource(use_reactive!(|(
+        thumb_url_for_resource,
+        is_video,
+        reqwest_client_context,
+    )| {
         let url = thumb_url_for_resource.clone();
         let client = reqwest_client_context;
         async move {
@@ -113,7 +137,12 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
             let resp = client.read().0.get(&url).send().await;
             match resp {
                 Ok(r) => {
-                    let mime = r.headers().get("content-type").and_then(|v| v.to_str().ok()).unwrap_or("image/jpeg").to_string();
+                    let mime = r
+                        .headers()
+                        .get("content-type")
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("image/jpeg")
+                        .to_string();
                     match r.bytes().await {
                         Ok(b) => Some((url, mime, b)),
                         Err(_) => None,
@@ -157,14 +186,25 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
 
     let display_url = full_data_url.or(thumb_data_url);
     // If the image is not ready, display_url will be None, triggering the loading spinner.
-    let is_loading_full = (display_url.is_none() || full_image_data.read().as_ref().map_or(true, |v| v.is_none())) && !is_video;
-    
-    let transform_style = format!("transform: scale({}); transition: transform 0.2s ease-out;", scale());
-    
-    let current_file_name_display = current_file.as_ref().map(|f| f.file_name.clone()).unwrap_or_else(|| active_file_name.clone());
-    
+    let is_loading_full = (display_url.is_none()
+        || full_image_data
+            .read()
+            .as_ref()
+            .map_or(true, |v| v.is_none()))
+        && !is_video;
+
+    let transform_style = format!(
+        "transform: scale({}); transition: transform 0.2s ease-out;",
+        scale()
+    );
+
+    let current_file_name_display = current_file
+        .as_ref()
+        .map(|f| f.file_name.clone())
+        .unwrap_or_else(|| active_file_name.clone());
+
     rsx! {
-        div { 
+        div {
             class: "fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md focus:outline-none",
             tabindex: "0",
             onmounted: move |e| async move {
@@ -175,7 +215,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                 if let Some((current_name, path)) = state.photo_viewer_modal.clone() {
                     let files = media_files.read();
                     let current_idx = files.iter().position(|f| f.file_name == current_name).unwrap_or(0);
-                    
+
                     match e.key().to_string().as_str() {
                         "ArrowRight" => {
                             if current_idx + 1 < files.len() {
@@ -201,7 +241,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                     }
                 }
             },
-            
+
             // Header bar
             div { class: "absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-[10000] bg-gradient-to-b from-black/80 to-transparent",
                 h2 { class: "text-white text-lg font-semibold drop-shadow-md", "{current_file_name_display}" }
@@ -211,22 +251,22 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                     }
                     if !is_video {
                         div { class: "flex items-center bg-black/60 rounded-lg p-1 backdrop-blur-md",
-                            button { 
+                            button {
                                 class: "p-2 text-white hover:bg-white/20 rounded",
                                 onclick: move |_| {
                                     let current = scale();
                                     if current > 0.5 { scale.set(current - 0.25); }
                                 },
-                                "➖" 
+                                "➖"
                             }
                             span { class: "text-white text-sm min-w-[3ch] text-center", "{(scale() * 100.0).round()}%" }
-                            button { 
+                            button {
                                 class: "p-2 text-white hover:bg-white/20 rounded",
                                 onclick: move |_| {
                                     let current = scale();
                                     if current < 5.0 { scale.set(current + 0.25); }
                                 },
-                                "➕" 
+                                "➕"
                             }
                         }
                     }
@@ -239,7 +279,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                     }
                 }
             }
-            
+
             // Previous button
             if has_prev {
                 button {
@@ -285,12 +325,12 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
             }
 
             // Image/Video container
-            div { 
+            div {
                 class: "w-full h-full flex items-center justify-center overflow-hidden",
                 onclick: move |_| {
                     app_state.write().photo_viewer_modal = None;
                 },
-                
+
                 if is_video {
                     video {
                         class: "max-w-full max-h-full outline-none",

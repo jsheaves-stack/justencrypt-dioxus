@@ -1,17 +1,17 @@
 use dioxus::prelude::*;
 
 use crate::{
+    components::file_explorer::EDITABLE_FORMATS,
     components::ui::button::{Button, ButtonVariant},
     requests::file::put_file_text,
-    components::file_explorer::EDITABLE_FORMATS,
-    ReqwestClient, AppState,
+    AppState, ReqwestClient,
 };
 
 #[component]
 pub fn CreateFileModal(current_path: Vec<String>) -> Element {
     let mut app_state = use_context::<Signal<AppState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
-    
+
     let mut file_name = use_signal::<String>(|| String::new());
     let mut file_extension = use_signal::<String>(|| EDITABLE_FORMATS[0].to_string());
     let mut file_content = use_signal::<String>(|| String::new());
@@ -21,7 +21,7 @@ pub fn CreateFileModal(current_path: Vec<String>) -> Element {
     let current_path_clone = current_path.clone();
 
     rsx! {
-        div { 
+        div {
             class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none",
             tabindex: "-1",
             onkeydown: move |e| {
@@ -32,7 +32,7 @@ pub fn CreateFileModal(current_path: Vec<String>) -> Element {
             onclick: move |_| {
                 app_state.write().create_file_modal = false;
             },
-            div { 
+            div {
                 class: "relative flex w-11/12 max-w-5xl h-5/6 flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
                 onclick: move |e| e.stop_propagation(),
                 div { class: "flex justify-between items-center mb-4",
@@ -45,7 +45,7 @@ pub fn CreateFileModal(current_path: Vec<String>) -> Element {
                         "✕"
                     }
                 }
-                
+
                 div { class: "flex items-center gap-2 mb-4",
                     label { class: "text-sm font-medium", "File Name:" }
                     input {
@@ -81,7 +81,7 @@ pub fn CreateFileModal(current_path: Vec<String>) -> Element {
                 if let Some(err) = error_msg.read().as_ref() {
                     span { class: "text-sm text-destructive mb-2", "{err}" }
                 }
-                
+
                 div { class: "flex-grow flex flex-col min-h-0",
                     textarea {
                         class: "w-full h-full flex-grow resize-none rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 font-mono",

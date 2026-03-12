@@ -3,14 +3,14 @@ use dioxus::prelude::*;
 use crate::{
     components::ui::button::{Button, ButtonVariant},
     requests::file::{get_file_text, put_file_text},
-    ReqwestClient, AppState,
+    AppState, ReqwestClient,
 };
 
 #[component]
 pub fn EditFileModal(file_name: String, current_path: Vec<String>) -> Element {
     let mut app_state = use_context::<Signal<AppState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
-    
+
     let mut file_content = use_signal::<Option<String>>(|| None);
     let mut is_saving = use_signal(|| false);
 
@@ -19,7 +19,9 @@ pub fn EditFileModal(file_name: String, current_path: Vec<String>) -> Element {
 
     use_effect(use_reactive!(|(current_path_clone, file_name_clone)| {
         spawn(async move {
-            if let Ok(text) = get_file_text(reqwest_client_context, current_path_clone, file_name_clone).await {
+            if let Ok(text) =
+                get_file_text(reqwest_client_context, current_path_clone, file_name_clone).await
+            {
                 file_content.set(Some(text));
             } else {
                 file_content.set(Some("Error loading file.".to_string()));
@@ -28,7 +30,7 @@ pub fn EditFileModal(file_name: String, current_path: Vec<String>) -> Element {
     }));
 
     rsx! {
-        div { 
+        div {
             class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none",
             tabindex: "-1",
             onkeydown: move |e| {
@@ -39,7 +41,7 @@ pub fn EditFileModal(file_name: String, current_path: Vec<String>) -> Element {
             onclick: move |_| {
                 app_state.write().edit_file_modal = None;
             },
-            div { 
+            div {
                 class: "relative flex w-11/12 max-w-5xl h-5/6 flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
                 onclick: move |e| e.stop_propagation(),
                 div { class: "flex justify-between items-center mb-4",
@@ -52,7 +54,7 @@ pub fn EditFileModal(file_name: String, current_path: Vec<String>) -> Element {
                         "✕"
                     }
                 }
-                
+
                 div { class: "flex-grow flex flex-col min-h-0",
                     if let Some(content) = file_content.read().as_ref() {
                         textarea {

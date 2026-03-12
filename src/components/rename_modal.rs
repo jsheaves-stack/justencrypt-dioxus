@@ -3,14 +3,14 @@ use dioxus::prelude::*;
 use crate::{
     components::ui::button::{Button, ButtonVariant},
     requests::file::patch_file,
-    ReqwestClient, AppState,
+    AppState, ReqwestClient,
 };
 
 #[component]
 pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -> Element {
     let mut app_state = use_context::<Signal<AppState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
-    
+
     let mut new_name = use_signal::<String>(|| old_name.clone());
     let mut is_saving = use_signal(|| false);
     let mut error_msg = use_signal::<Option<String>>(|| None);
@@ -20,7 +20,7 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
     let is_file_clone = is_file.clone();
 
     rsx! {
-        div { 
+        div {
             class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none",
             tabindex: "-1",
             onkeydown: move |e| {
@@ -31,7 +31,7 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
             onclick: move |_| {
                 app_state.write().rename_modal = None;
             },
-            div { 
+            div {
                 class: "relative flex w-[400px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
                 onclick: move |e| e.stop_propagation(),
                 div { class: "flex justify-between items-center mb-4",
@@ -44,7 +44,7 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
                         "✕"
                     }
                 }
-                
+
                 div { class: "flex flex-col gap-4 my-4",
                     div { class: "flex flex-col gap-2",
                         label { class: "text-sm font-medium", "New Name" }
@@ -90,7 +90,7 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
                             let current_path = current_path_clone.clone();
                             let old_name_str = old_name_clone.clone();
                             let is_file_flag = is_file_clone.clone();
-                            
+
                             is_saving.set(true);
                             spawn(async move {
                                 if is_file_flag {

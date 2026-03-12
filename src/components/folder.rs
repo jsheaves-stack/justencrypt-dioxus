@@ -17,7 +17,7 @@ static FOLDER_ICO: Asset = asset!("/assets/icons/folder-filled.svg");
 pub fn Folder(file: FolderItem, current_path: Vec<String>) -> Element {
     let router = router();
     let new_file = file.clone();
-    
+
     let mut context_menu = use_context::<Signal<ContextMenuState>>();
     let file_clone = file.clone();
     let current_path_clone = current_path.clone();

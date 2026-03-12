@@ -14,7 +14,7 @@ pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
 
     rsx! {
-        div { 
+        div {
             class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none",
             tabindex: "-1",
             onkeydown: move |e| {
@@ -25,7 +25,7 @@ pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
             onclick: move |_| {
                 app_state.write().create_folder_modal = false;
             },
-            div { 
+            div {
                 class: "relative flex w-[400px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
                 onclick: move |e| e.stop_propagation(),
                 div { class: "flex justify-between items-center mb-4",
@@ -38,7 +38,7 @@ pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
                         "✕"
                     }
                 }
-                
+
                 div { class: "flex flex-col gap-4 my-4",
                     div { class: "flex flex-col gap-2",
                         label { class: "text-sm font-medium", "Folder Name" }

@@ -1,6 +1,6 @@
-use crate::{components::file_explorer::FolderItem, ReqwestClient, api_url};
-use dioxus::signals::Signal;
 use super::RequestBuilderExt;
+use crate::{api_url, components::file_explorer::FolderItem, ReqwestClient};
+use dioxus::signals::Signal;
 
 pub async fn put_folder(
     reqwest_client_context: Signal<ReqwestClient>,
@@ -68,7 +68,8 @@ pub async fn get_folder(
     match resp {
         Ok(r) if r.status().is_success() => {
             let response_string = r.text().await.map_err(|_| ())?;
-            let folders: Vec<FolderItem> = serde_json::from_str(&response_string).map_err(|_| ())?;
+            let folders: Vec<FolderItem> =
+                serde_json::from_str(&response_string).map_err(|_| ())?;
             Ok(folders)
         }
         Ok(_) => Err(()),
