@@ -27,26 +27,20 @@ RUN npm run build:css
 # Build the Dioxus app for release on the web platform
 RUN dx build --release --platform web
 
-# Stage 2: Serve the application with Nginx
-FROM nginx:alpine
-
-# Configure nginx to route all traffic to index.html for client-side routing
-# We'll inline a simple configuration for SPAs.
-RUN echo 'server { \
-    listen 80; \
-    server_name localhost; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    location / { \
-    try_files $uri $uri/ /index.html; \
-    } \
-    }' > /etc/nginx/conf.d/default.conf
+# Stage 2: Serve the application with Caddy
+FROM caddy:alpine
 
 # Copy the built files from the builder
-COPY --from=builder /app/target/dx/justencrypt-client/release/web/public /usr/share/nginx/html
+COPY --from=builder /app/target/dx/justencrypt-client/release/web/public /usr/share/caddy
 
-# Add the script to inject the runtime API_URL environment variable
-COPY docker-entrypoint.sh /docker-entrypoint.d/99-env.sh
-RUN chmod +x /docker-entrypoint.d/99-env.sh
+# Copy Caddyfile
+COPY Caddyfile /etc/caddy/Caddyfile
+
+# Add the entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 80
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
