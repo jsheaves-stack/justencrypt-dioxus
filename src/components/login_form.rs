@@ -31,14 +31,9 @@ pub fn Login() -> Element {
 
         is_loading.set(false);
 
-        match create_session_result {
-            Ok(_) => {
-                app_state.write().authenticated = true;
-                router.replace(Route::Home {});
-            }
-            Err(_) => {
-                return;
-            }
+        if create_session_result.is_ok() {
+            app_state.write().authenticated = true;
+            router.replace(Route::Home {});
         }
     };
 

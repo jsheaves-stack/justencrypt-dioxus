@@ -5,3 +5,5 @@ pub mod header;
 pub mod image;
 pub mod input;
 pub mod label;
+pub mod spinner;
+pub mod upload_modal;

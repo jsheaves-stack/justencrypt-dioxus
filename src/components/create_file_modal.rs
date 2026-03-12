@@ -12,9 +12,9 @@ pub fn CreateFileModal(current_path: Vec<String>) -> Element {
     let mut app_state = use_context::<Signal<AppState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
 
-    let mut file_name = use_signal::<String>(|| String::new());
+    let mut file_name = use_signal::<String>(String::new);
     let mut file_extension = use_signal::<String>(|| EDITABLE_FORMATS[0].to_string());
-    let mut file_content = use_signal::<String>(|| String::new());
+    let mut file_content = use_signal::<String>(String::new);
     let mut is_saving = use_signal(|| false);
     let mut error_msg = use_signal::<Option<String>>(|| None);
 

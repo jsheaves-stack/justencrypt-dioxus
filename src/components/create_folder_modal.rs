@@ -8,7 +8,7 @@ use crate::{
 
 #[component]
 pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
-    let mut folder_name = use_signal::<String>(|| String::new());
+    let mut folder_name = use_signal::<String>(String::new);
     let mut is_saving = use_signal(|| false);
     let mut app_state = use_context::<Signal<crate::AppState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();

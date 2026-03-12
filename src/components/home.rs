@@ -1,5 +1,7 @@
 use crate::{
-    components::ui::context_menu::ContextMenu, requests::folder::get_folder, ReqwestClient, Route,
+    components::ui::{context_menu::ContextMenu, spinner::Spinner},
+    requests::folder::get_folder,
+    ReqwestClient, Route,
 };
 use dioxus::prelude::*;
 
@@ -52,16 +54,18 @@ pub fn Home() -> Element {
                 ContextMenu {}
             }
         }
+    } else if !session_check.finished() {
+        rsx! {
+            div {
+                class: "flex h-screen w-screen items-center justify-center bg-background",
+                style: "display: flex; width: 100vw; height: 100vh; align-items: center; justify-content: center; background-color: #111216; color: white;",
+                Spinner { class: "h-8 w-8" }
+            }
+        }
     } else {
-        if !session_check.finished() {
-            rsx! {
-                div { "Loading..." }
-            }
-        } else {
-            router.replace(Route::Login {});
-            rsx! {
-                div { "Redirecting..." }
-            }
+        router.replace(Route::Login {});
+        rsx! {
+            div { "Redirecting..." }
         }
     }
 }

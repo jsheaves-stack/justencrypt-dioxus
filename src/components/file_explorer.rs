@@ -8,7 +8,7 @@ use crate::{
         folder::Folder,
         photo_viewer_modal::PhotoViewerModal,
         rename_modal::RenameModal,
-        ui::{button::Button, header::Header},
+        ui::{button::Button, header::Header, spinner::Spinner},
     },
     requests::{file::put_file, folder::get_folder},
     ReqwestClient, Route,
@@ -84,6 +84,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
     let router = router();
     let mut app_state = use_context::<Signal<crate::AppState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
+    let upload_state = use_context::<Signal<crate::UploadState>>();
     let create_folder_modal_state = app_state.read().create_folder_modal;
     let create_file_modal_state = app_state.read().create_file_modal;
     let needs_refetch = use_memo(move || app_state.read().needs_refetch);
@@ -103,6 +104,13 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
             }
         }));
 
+    let mut display_count = use_signal(|| 50);
+
+    let _path_for_reset = path.clone();
+    use_effect(use_reactive!(|_path_for_reset| {
+        display_count.set(50);
+    }));
+
     use_effect(move || {
         if needs_refetch() {
             folder_contents_resource.restart();
@@ -111,11 +119,12 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
     });
 
     let path_clone = path.clone();
-    let folder_contents_for_display = match (&*folder_contents_resource.value())() {
+    let folder_contents_for_display = match (*folder_contents_resource.value())() {
         Some((Ok(files), resource_path)) => {
             if resource_path == path_clone {
                 files
                     .into_iter()
+                    .take(*display_count.read())
                     .map(|file| {
                         rsx! {
                             if file.is_file {
@@ -133,19 +142,34 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                     })
                     .collect::<Vec<_>>()
             } else {
-                vec![rsx! { div { "Loading contents..." } }]
+                vec![rsx! {
+                    div { class: "flex w-full justify-center p-12",
+                        Spinner { class: "h-8 w-8 text-muted-foreground" }
+                    }
+                }]
             }
         }
         Some((Err(_), _)) => {
             vec![rsx! { div { "Error loading folder." } }]
         }
         None => {
-            vec![rsx! { div { "Loading contents..." } }]
+            vec![rsx! {
+                div { class: "flex w-full justify-center p-12",
+                    Spinner { class: "h-8 w-8 text-muted-foreground" }
+                }
+            }]
         }
     };
 
     rsx! {
-        div { class: "w-full h-full bg-background text-foreground overflow-scroll",
+        div {
+            class: "w-full h-full bg-background text-foreground overflow-scroll",
+            onscroll: move |evt| {
+                let data = evt.data();
+                if data.scroll_top() + (data.client_height() as f64) >= (data.scroll_height() as f64) - 1000.0 {
+                    display_count += 50;
+                }
+            },
             Header {}
             div { class: "mt-4 grid h-min w-full auto-rows-min justify-items-end gap-x-4 gap-y-2 px-4",
                 div { class: "col-start-1 row-start-1 flex justify-self-start",
@@ -188,12 +212,13 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                             multiple: true,
                             onchange: move |e| {
                                 let current_path = file_upload_path.clone();
-                                async move {
-                                    put_file(reqwest_client_context, current_path.clone(), e.files())
-                                        .await
-                                        .unwrap();
-                                    app_state.write().needs_refetch = true;
-                                }
+                                spawn(async move {
+                                    let files = e.files();
+                                    if !files.is_empty() {
+                                        let _ = put_file(reqwest_client_context, upload_state, current_path.clone(), files).await;
+                                        app_state.write().needs_refetch = true;
+                                    }
+                                });
                             },
                         }
                         Button { class: "fit-content",
@@ -208,11 +233,13 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                             directory: true,
                             onchange: move |e| {
                                 let current_path = folder_upload_path.clone();
-                                async move {
-                                    let _ = put_file(reqwest_client_context, current_path.clone(), e.files())
-                                        .await;
-                                    app_state.write().needs_refetch = true;
-                                }
+                                spawn(async move {
+                                    let files = e.files();
+                                    if !files.is_empty() {
+                                        let _ = put_file(reqwest_client_context, upload_state, current_path.clone(), files).await;
+                                        app_state.write().needs_refetch = true;
+                                    }
+                                });
                             },
                         }
                         Button { class: "fit-content",

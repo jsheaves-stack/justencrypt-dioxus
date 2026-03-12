@@ -2,7 +2,10 @@ use dioxus::prelude::*;
 
 use crate::{
     api_url,
-    components::file_explorer::{IMAGE_FORMATS, VIDEO_FORMATS},
+    components::{
+        file_explorer::{IMAGE_FORMATS, VIDEO_FORMATS},
+        ui::spinner::Spinner,
+    },
     requests::folder::get_folder,
     AppState, ReqwestClient,
 };
@@ -70,7 +73,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
         (current_file, has_next, has_prev)
     };
 
-    let is_video = current_file.as_ref().map_or(false, |f| {
+    let is_video = current_file.as_ref().is_some_and(|f| {
         if let Some(ext) = &f.file_extension {
             return VIDEO_FORMATS.contains(&ext.to_uppercase().as_str());
         }
@@ -190,7 +193,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
         || full_image_data
             .read()
             .as_ref()
-            .map_or(true, |v| v.is_none()))
+            .is_none_or(|v| v.is_none()))
         && !is_video;
 
     let transform_style = format!(
@@ -361,8 +364,8 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                         }
                     }
                 } else {
-                    div { class: "flex flex-col items-center justify-center",
-                        div { class: "w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mb-4" }
+                    div { class: "flex flex-col items-center justify-center gap-4",
+                        Spinner { class: "h-12 w-12 text-white" }
                         span { class: "text-white", "Loading..." }
                     }
                 }

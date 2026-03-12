@@ -5,12 +5,33 @@ mod requests;
 
 use components::{
     file_explorer::FileExplorer, home::Home, login_form::Login, ui::context_menu::ContextMenuState,
+    ui::upload_modal::UploadModal,
 };
 use dioxus::prelude::*;
 use reqwest::Client;
 use tracing::Level;
 
 const LOG_LEVEL: Level = Level::DEBUG;
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum UploadStatus {
+    Pending,
+    Uploading,
+    Done,
+    Error,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct UploadTask {
+    pub file_name: String,
+    pub status: UploadStatus,
+    pub progress: f64,
+}
+
+#[derive(Clone, PartialEq, Debug, Default)]
+pub struct UploadState {
+    pub tasks: Vec<UploadTask>,
+}
 
 pub fn api_url() -> &'static str {
     static API_URL: std::sync::OnceLock<String> = std::sync::OnceLock::new();
@@ -113,6 +134,7 @@ fn App() -> Element {
     use_context_provider(|| Signal::new(ReqwestClient(client)));
     use_context_provider(|| Signal::new(app_state));
     use_context_provider(|| Signal::new(ContextMenuState::default()));
+    use_context_provider(|| Signal::new(UploadState::default()));
 
     rsx! {
         document::Stylesheet { href: TAILWIND_CSS }
@@ -122,6 +144,7 @@ fn App() -> Element {
 
         div { class: "dark w-full h-full",
             Router::<Route> {}
+            UploadModal {}
         }
     }
 }

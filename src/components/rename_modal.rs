@@ -17,7 +17,7 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
 
     let old_name_clone = old_name.clone();
     let current_path_clone = current_path.clone();
-    let is_file_clone = is_file.clone();
+    let is_file_clone = is_file;
 
     rsx! {
         div {
@@ -89,7 +89,7 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
 
                             let current_path = current_path_clone.clone();
                             let old_name_str = old_name_clone.clone();
-                            let is_file_flag = is_file_clone.clone();
+                            let is_file_flag = is_file_clone;
 
                             is_saving.set(true);
                             spawn(async move {

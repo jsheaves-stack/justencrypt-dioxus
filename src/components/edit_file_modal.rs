@@ -1,7 +1,10 @@
 use dioxus::prelude::*;
 
 use crate::{
-    components::ui::button::{Button, ButtonVariant},
+    components::ui::{
+        button::{Button, ButtonVariant},
+        spinner::Spinner,
+    },
     requests::file::{get_file_text, put_file_text},
     AppState, ReqwestClient,
 };
@@ -70,7 +73,7 @@ pub fn EditFileModal(file_name: String, current_path: Vec<String>) -> Element {
                         }
                     } else {
                         div { class: "flex items-center justify-center h-full",
-                            span { class: "text-muted-foreground animate-pulse", "Loading..." }
+                            Spinner { class: "h-8 w-8 text-primary" }
                         }
                     }
                 }

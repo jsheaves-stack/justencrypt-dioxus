@@ -16,7 +16,7 @@ pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> El
 
     let name_clone = name.clone();
     let current_path_clone = current_path.clone();
-    let is_file_clone = is_file.clone();
+    let is_file_clone = is_file;
 
     rsx! {
         div {
@@ -74,7 +74,7 @@ pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> El
                         onclick: move |_| {
                             let current_path = current_path_clone.clone();
                             let target_name = name_clone.clone();
-                            let is_file_flag = is_file_clone.clone();
+                            let is_file_flag = is_file_clone;
 
                             is_deleting.set(true);
                             spawn(async move {

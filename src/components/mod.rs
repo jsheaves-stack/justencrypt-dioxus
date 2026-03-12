@@ -9,5 +9,4 @@ pub mod home;
 pub mod login_form;
 pub mod photo_viewer_modal;
 pub mod rename_modal;
-pub mod test_wheel;
 pub mod ui;
