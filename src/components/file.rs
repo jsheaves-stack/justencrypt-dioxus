@@ -22,16 +22,25 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
     let current_path_clone = current_path.clone();
     let current_path_clone_click = current_path.clone();
 
-    let is_media = match file.file_extension.as_deref() {
+    let is_image = match file.file_extension.as_deref() {
         Some(ext) => {
             let ext_upper = ext.to_uppercase();
             IMAGE_FORMATS.contains(&ext_upper.as_str())
-                || VIDEO_FORMATS.contains(&ext_upper.as_str())
         }
         _ => false,
     };
 
-    let thumbnail_url = match is_media {
+    let is_video = match file.file_extension.as_deref() {
+        Some(ext) => {
+            let ext_upper = ext.to_uppercase();
+            VIDEO_FORMATS.contains(&ext_upper.as_str())
+        }
+        _ => false,
+    };
+
+    let is_media = is_image || is_video;
+
+    let thumbnail_url = match is_image {
         true => {
             format!(
                 "{}/thumbnail/{}{}",
@@ -51,7 +60,7 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
 
     rsx! {
         div {
-            class: "flex justify-center p-4 h-64 w-64",
+            class: "flex justify-center p-2 sm:p-4 h-48 sm:h-64 w-full cursor-pointer",
             oncontextmenu: move |e| {
                 e.prevent_default();
                 e.stop_propagation();
@@ -72,10 +81,28 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
                     }
                 },
                 CardContent { class: "p-4! pt-4 flex flex-col justify-center items-center h-full w-full overflow-hidden",
-                    if is_media {
+                    if is_image {
                         Image {
                             class: "object-contain w-min h-full align-center",
                             src: "{thumbnail_url}",
+                        }
+                    } else if is_video {
+                        div { class: "flex flex-col items-center justify-center w-3/4 h-3/4 bg-secondary/20 rounded-xl border-2 border-border text-muted-foreground shadow-inner",
+                            svg {
+                                xmlns: "http://www.w3.org/2000/svg",
+                                width: "48",
+                                height: "48",
+                                view_box: "0 0 24 24",
+                                fill: "none",
+                                stroke: "currentColor",
+                                "stroke-width": "2",
+                                "stroke-linecap": "round",
+                                "stroke-linejoin": "round",
+                                class: "mb-2",
+                                path { d: "m15 10 4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z" }
+                                rect { x: "3", y: "6", width: "12", height: "12", rx: "2", ry: "2" }
+                            }
+                            span { class: "font-bold text-xl uppercase tracking-wider", "VIDEO" }
                         }
                     } else {
                         div { class: "flex items-center justify-center w-3/4 h-3/4 bg-secondary/20 rounded-xl border-2 border-border text-muted-foreground font-bold text-3xl uppercase tracking-wider shadow-inner",
@@ -88,7 +115,7 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
                         Label {
                             html_for: "{file.file_name}",
                             tooltip: "{file.file_name}",
-                            class: "grid grid-cols-1 w-32 mx-auto",
+                            class: "grid grid-cols-1 w-full mx-auto",
                             span { class: "truncate min-w-0 text-center h-6", "{file.file_name}" }
                         }
                     }

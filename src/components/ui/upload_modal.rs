@@ -36,7 +36,7 @@ pub fn UploadModal() -> Element {
 
     rsx! {
         div {
-            class: "fixed bottom-6 right-6 w-[650px] bg-card border border-border rounded-lg shadow-xl z-[100] flex flex-col overflow-hidden",
+            class: "fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 w-auto sm:w-[650px] max-w-full bg-card border border-border rounded-lg shadow-xl z-[100] flex flex-col overflow-hidden",
             div {
                 class: "bg-muted px-4 py-3 flex justify-between items-center border-b border-border shadow-sm",
                 span { class: "font-medium text-sm text-foreground", "Uploading {completed}/{total} files..." }

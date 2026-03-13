@@ -18,6 +18,10 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
 
     let mut scale = use_signal(|| 1.0f64);
+    let mut offset_x = use_signal(|| 0.0f64);
+    let mut offset_y = use_signal(|| 0.0f64);
+    let mut is_dragging = use_signal(|| false);
+    let mut drag_start = use_signal(|| (0.0f64, 0.0f64));
 
     // Fetch folder contents once when modal is opened
     let current_path_for_resource = current_path.clone();
@@ -190,16 +194,24 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
     let display_url = full_data_url.or(thumb_data_url);
     // If the image is not ready, display_url will be None, triggering the loading spinner.
     let is_loading_full = (display_url.is_none()
-        || full_image_data
-            .read()
-            .as_ref()
-            .is_none_or(|v| v.is_none()))
+        || full_image_data.read().as_ref().is_none_or(|v| v.is_none()))
         && !is_video;
 
-    let transform_style = format!(
-        "transform: scale({}); transition: transform 0.2s ease-out;",
-        scale()
-    );
+    let transform_style = if is_dragging() {
+        format!(
+            "transform: translate({}px, {}px) scale({});",
+            offset_x(),
+            offset_y(),
+            scale()
+        )
+    } else {
+        format!(
+            "transform: translate({}px, {}px) scale({}); transition: transform 0.2s ease-out;",
+            offset_x(),
+            offset_y(),
+            scale()
+        )
+    };
 
     let current_file_name_display = current_file
         .as_ref()
@@ -225,6 +237,8 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                                 let next_name = files[current_idx + 1].file_name.clone();
                                 drop(state); // Drop the read lock before writing
                                 scale.set(1.0);
+                                offset_x.set(0.0);
+                                offset_y.set(0.0);
                                 app_state.write().photo_viewer_modal = Some((next_name, path));
                             }
                         },
@@ -233,6 +247,8 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                                 let prev_name = files[current_idx - 1].file_name.clone();
                                 drop(state);
                                 scale.set(1.0);
+                                offset_x.set(0.0);
+                                offset_y.set(0.0);
                                 app_state.write().photo_viewer_modal = Some((prev_name, path));
                             }
                         },
@@ -258,7 +274,14 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                                 class: "p-2 text-white hover:bg-white/20 rounded",
                                 onclick: move |_| {
                                     let current = scale();
-                                    if current > 0.5 { scale.set(current - 0.25); }
+                                    if current > 0.5 {
+                                        let new_scale = current - 0.25;
+                                        scale.set(new_scale);
+                                        if new_scale <= 1.0 {
+                                            offset_x.set(0.0);
+                                            offset_y.set(0.0);
+                                        }
+                                    }
                                 },
                                 "➖"
                             }
@@ -286,7 +309,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
             // Previous button
             if has_prev {
                 button {
-                    class: "absolute left-6 top-1/2 -translate-y-1/2 w-16 h-16 flex items-center justify-center text-3xl leading-none bg-black/50 hover:bg-white/30 rounded-full text-white z-[10000] backdrop-blur-md transition-all border border-white/10 hover:scale-110",
+                    class: "absolute left-6 top-1/2 -translate-y-1/2 w-16 h-16 flex items-center justify-center text-3xl pb-1 bg-black/50 hover:bg-white/30 rounded-full text-white z-[10000] backdrop-blur-md transition-all border border-white/10 hover:scale-110",
                     onclick: move |e| {
                         e.stop_propagation();
                         let state = app_state.read();
@@ -297,18 +320,22 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                                 let prev_name = files[current_idx - 1].file_name.clone();
                                 drop(state);
                                 scale.set(1.0);
+                                offset_x.set(0.0);
+                                offset_y.set(0.0);
                                 app_state.write().photo_viewer_modal = Some((prev_name, path));
                             }
                         }
                     },
-                    "◀"
+                    span {
+                        "◀"
+                    }
                 }
             }
 
             // Next button
             if has_next {
                 button {
-                    class: "absolute right-6 top-1/2 -translate-y-1/2 w-16 h-16 flex items-center justify-center text-3xl leading-none bg-black/50 hover:bg-white/30 rounded-full text-white z-[10000] backdrop-blur-md transition-all border border-white/10 hover:scale-110",
+                    class: "absolute right-6 top-1/2 -translate-y-1/2 w-16 h-16 flex items-center justify-center text-3xl pb-1 pl-1 bg-black/50 hover:bg-white/30 rounded-full text-white z-[10000] backdrop-blur-md transition-all border border-white/10 hover:scale-110",
                     onclick: move |e| {
                         e.stop_propagation();
                         let state = app_state.read();
@@ -319,11 +346,15 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                                 let next_name = files[current_idx + 1].file_name.clone();
                                 drop(state);
                                 scale.set(1.0);
+                                offset_x.set(0.0);
+                                offset_y.set(0.0);
                                 app_state.write().photo_viewer_modal = Some((next_name, path));
                             }
                         }
                     },
-                    "▶"
+                    span {
+                        "▶"
+                    }
                 }
             }
 
@@ -346,21 +377,55 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                     }
                 } else if let Some(url) = display_url {
                     img {
-                        class: "max-w-full max-h-full object-contain cursor-grab active:cursor-grabbing",
+                        class: "max-w-full max-h-full object-contain cursor-grab active:cursor-grabbing select-none",
                         style: "{transform_style}",
                         src: "{url}",
                         alt: "{current_file_name_display}",
+                        draggable: "false",
                         onclick: move |e| {
                             e.stop_propagation();
+                        },
+                        ondragstart: move |e| {
+                            e.prevent_default();
                         },
                         onwheel: move |e| {
                             let delta = e.delta().strip_units().y;
                             let current = scale();
                             if delta > 0.0 && current > 0.5 {
-                                scale.set(current - 0.1);
+                                let new_scale = current - 0.1;
+                                scale.set(new_scale);
+                                if new_scale <= 1.0 {
+                                    offset_x.set(0.0);
+                                    offset_y.set(0.0);
+                                }
                             } else if delta < 0.0 && current < 5.0 {
                                 scale.set(current + 0.1);
                             }
+                        },
+                        onmousedown: move |e| {
+                            e.stop_propagation();
+                            if scale() > 1.0 {
+                                is_dragging.set(true);
+                                drag_start.set((e.client_coordinates().x, e.client_coordinates().y));
+                            }
+                        },
+                        onmousemove: move |e| {
+                            if is_dragging() {
+                                e.stop_propagation();
+                                let dx = e.client_coordinates().x - drag_start().0;
+                                let dy = e.client_coordinates().y - drag_start().1;
+                                let zoom = scale();
+                                // Divide by zoom factor so mouse movement maps 1:1 to image pixels
+                                offset_x.set(offset_x() + (dx / zoom));
+                                offset_y.set(offset_y() + (dy / zoom));
+                                drag_start.set((e.client_coordinates().x, e.client_coordinates().y));
+                            }
+                        },
+                        onmouseup: move |_| {
+                            is_dragging.set(false);
+                        },
+                        onmouseleave: move |_| {
+                            is_dragging.set(false);
                         }
                     }
                 } else {

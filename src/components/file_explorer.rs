@@ -79,6 +79,27 @@ pub struct FolderItem {
     pub file_name: String,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum SortCriteria {
+    NameAsc,
+    NameDesc,
+    TypeAsc,
+    TypeDesc,
+}
+
+impl std::str::FromStr for SortCriteria {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "NameAsc" => Ok(SortCriteria::NameAsc),
+            "NameDesc" => Ok(SortCriteria::NameDesc),
+            "TypeAsc" => Ok(SortCriteria::TypeAsc),
+            "TypeDesc" => Ok(SortCriteria::TypeDesc),
+            _ => Err(()),
+        }
+    }
+}
+
 #[component]
 pub fn FileExplorer(path: Vec<String>) -> Element {
     let router = router();
@@ -105,6 +126,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         }));
 
     let mut display_count = use_signal(|| 50);
+    let mut sort_criteria = use_signal(|| SortCriteria::NameAsc);
 
     let _path_for_reset = path.clone();
     use_effect(use_reactive!(|_path_for_reset| {
@@ -120,8 +142,41 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
 
     let path_clone = path.clone();
     let folder_contents_for_display = match (*folder_contents_resource.value())() {
-        Some((Ok(files), resource_path)) => {
+        Some((Ok(mut files), resource_path)) => {
             if resource_path == path_clone {
+                files.sort_by(|a, b| match *sort_criteria.read() {
+                    SortCriteria::NameAsc => {
+                        a.file_name.to_lowercase().cmp(&b.file_name.to_lowercase())
+                    }
+                    SortCriteria::NameDesc => {
+                        b.file_name.to_lowercase().cmp(&a.file_name.to_lowercase())
+                    }
+                    SortCriteria::TypeAsc => match (a.is_file, b.is_file) {
+                        (false, true) => std::cmp::Ordering::Less,
+                        (true, false) => std::cmp::Ordering::Greater,
+                        _ => {
+                            let ext_cmp = a.file_extension.cmp(&b.file_extension);
+                            if ext_cmp == std::cmp::Ordering::Equal {
+                                a.file_name.to_lowercase().cmp(&b.file_name.to_lowercase())
+                            } else {
+                                ext_cmp
+                            }
+                        }
+                    },
+                    SortCriteria::TypeDesc => match (a.is_file, b.is_file) {
+                        (false, true) => std::cmp::Ordering::Greater,
+                        (true, false) => std::cmp::Ordering::Less,
+                        _ => {
+                            let ext_cmp = b.file_extension.cmp(&a.file_extension);
+                            if ext_cmp == std::cmp::Ordering::Equal {
+                                b.file_name.to_lowercase().cmp(&a.file_name.to_lowercase())
+                            } else {
+                                ext_cmp
+                            }
+                        }
+                    },
+                });
+
                 files
                     .into_iter()
                     .take(*display_count.read())
@@ -143,18 +198,18 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                     .collect::<Vec<_>>()
             } else {
                 vec![rsx! {
-                    div { class: "flex w-full justify-center p-12",
+                    div { class: "flex w-full justify-center p-12 col-span-full",
                         Spinner { class: "h-8 w-8 text-muted-foreground" }
                     }
                 }]
             }
         }
         Some((Err(_), _)) => {
-            vec![rsx! { div { "Error loading folder." } }]
+            vec![rsx! { div { class: "col-span-full", "Error loading folder." } }]
         }
         None => {
             vec![rsx! {
-                div { class: "flex w-full justify-center p-12",
+                div { class: "flex w-full justify-center p-12 col-span-full",
                     Spinner { class: "h-8 w-8 text-muted-foreground" }
                 }
             }]
@@ -171,8 +226,8 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                 }
             },
             Header {}
-            div { class: "mt-4 grid h-min w-full auto-rows-min justify-items-end gap-x-4 gap-y-2 px-4",
-                div { class: "col-start-1 row-start-1 flex justify-self-start",
+            div { class: "mt-4 flex flex-col md:flex-row w-full justify-between items-start md:items-center gap-4 px-4",
+                div { class: "flex-shrink-0",
                     Button {
                         onclick: move |_| {
                             let mut new_path_vec = path_clone.clone();
@@ -186,25 +241,35 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                         span { "Back" }
                     }
                 }
-                div { class: "col-start-2 row-start-1 flex flex-wrap items-center gap-x-4 gap-y-2 justify-self-end",
-                    div {}
-                    div {
-                        Button {
-                            onclick: move |_| {
-                                app_state.write().create_file_modal = true;
-                            },
-                            "Create File"
-                        }
+                div { class: "flex flex-wrap items-center gap-2 justify-start md:justify-end w-full md:w-auto",
+                    select {
+                        class: "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full sm:w-auto",
+                        onchange: move |e| {
+                            if let Ok(val) = e.value().parse::<SortCriteria>() {
+                                sort_criteria.set(val);
+                            }
+                        },
+                        option { value: "NameAsc", "Name (A-Z)" }
+                        option { value: "NameDesc", "Name (Z-A)" }
+                        option { value: "TypeAsc", "Type (A-Z)" }
+                        option { value: "TypeDesc", "Type (Z-A)" }
+                    }
+                    Button {
+                        class: "w-full sm:w-auto",
+                        onclick: move |_| {
+                            app_state.write().create_file_modal = true;
+                        },
+                        "Create File"
+                    }
+                    Button {
+                        class: "w-full sm:w-auto",
+                        onclick: move |_| {
+                            app_state.write().create_folder_modal = true;
+                        },
+                        "Create Folder"
                     }
                     div {
-                        Button {
-                            onclick: move |_| {
-                                app_state.write().create_folder_modal = true;
-                            },
-                            "Create Folder"
-                        }
-                    }
-                    div {
+                        class: "w-full sm:w-auto",
                         input {
                             class: "hidden",
                             id: "file-upload",
@@ -221,11 +286,13 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                                 });
                             },
                         }
-                        Button { class: "fit-content",
-                            label { r#for: "file-upload", "Upload Files" }
+                        Button {
+                            class: "w-full sm:w-auto",
+                            label { class: "w-full text-center cursor-pointer", r#for: "file-upload", "Upload Files" }
                         }
                     }
                     div {
+                        class: "w-full sm:w-auto",
                         input {
                             class: "hidden",
                             id: "folder-upload",
@@ -242,8 +309,9 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                                 });
                             },
                         }
-                        Button { class: "fit-content",
-                            label { r#for: "folder-upload", "Upload Folder" }
+                        Button {
+                            class: "w-full sm:w-auto",
+                            label { class: "w-full text-center cursor-pointer", r#for: "folder-upload", "Upload Folder" }
                         }
                     }
                 }
@@ -273,7 +341,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                 PhotoViewerModal { file_name, current_path: file_path }
             }
 
-            div { class: "h-full w-full px-4 py-4 flex flex-row flex-wrap h-min items-center justify-items-center",
+            div { class: "h-full w-full px-4 py-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 auto-rows-max",
                 {folder_contents_for_display.into_iter()}
             }
         }

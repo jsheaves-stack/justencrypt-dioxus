@@ -3,6 +3,7 @@ use crate::{api_url, ReqwestClient};
 use dioxus::prelude::*;
 use dioxus::{html::FileData, signals::Signal};
 use futures::FutureExt;
+use futures::StreamExt;
 
 use serde::Serialize;
 

@@ -6,6 +6,8 @@ A cross-platform file encryption service client application built using Rust and
 
 * **Cross-Platform Support**: Runs as a Web application (WASM) in the browser or natively on Desktop.
 * **File Explorer**: Navigate through your encrypted files and folders.
+  * **Sorting**: Organizes items alphabetically by Name or strictly by file Type.
+  * **Mobile Responsive**: Dynamically scales grids and action bars to beautifully fit on all devices.
 * **Authentication**: Login securely to access your encrypted vault.
 * **Hidden Files**: Toggle visibility of hidden files and folders by pressing the `.` (period) key.
 * **Modern UI**: Styled with Tailwind CSS, featuring a built-in Dark Mode.
@@ -88,7 +90,7 @@ dx serve --platform web --hot-reload true
 
 ## Docker Deployment
 
-The application includes a `Dockerfile` that builds the web application and serves it using a lightweight Nginx container. It supports injecting the backend API URL at runtime.
+The application includes a `Dockerfile` that builds the web application and serves it using a lightweight Caddy container. It supports injecting the backend API URL at runtime.
 
 ### 1. Build the Docker Image
 

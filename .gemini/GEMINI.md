@@ -41,6 +41,9 @@ The application is strictly designed to build for two targets using conditional 
   - API calls rely on `use_resource`, passing in context such as `reqwest_client_context` and path via `use_reactive!`.
   - A successful mutation (e.g., file upload, folder creation) toggles `app_state.write().needs_refetch = true;`. An effect hook (`use_effect`) listens to this and triggers `resource.restart()` to refresh data.
 - **Image Handling**: The `Image` component (in `src/components/ui/image.rs`) manually fetches image data over the network via `reqwest` and renders them as base64-encoded strings `src="data:{content_type};base64,{b64}"`.
+- **Photo Viewer**: Interactive modal supporting drag-to-pan using standard delta transforms divided by the zoom level to map mouse movement 1:1 to image pixels. Native HTML drag events are overridden via `draggable="false"` to prevent browser interception.
+- **File Explorer Layout**: Uses a fully responsive CSS Grid layout (`grid-cols-2` scaling up to `xl:grid-cols-6`) where `File` and `Folder` cards stretch 100% within their grid cell width instead of relying on fixed flex dimensions.
+- **Sorting**: Regulated by `SortCriteria` enum stored in the FileExplorer's local state, dictating the sort mapping logic in the active folder's `folder_contents_for_display`.
 
 ## Hidden Files Feature (Gemini Memory)
 - As noted in previous interactions, the file explorer is intended to support hiding/showing hidden files and folders, which is toggled via the `.` key. Agents should preserve this behavior if found, and account for it when modifying key events or rendering logic.
@@ -55,6 +58,6 @@ The application is strictly designed to build for two targets using conditional 
 
 ## Coding Conventions & Guidelines
 - **Dioxus Macros**: UI is built utilizing the `rsx!` macro.
-- **Styling Strategy**: Utility-first styling with Tailwind CSS embedded directly inside the `rsx!` markup class attributes. The `dark` class is globally applied on the main wrapping div.
+- **Styling Strategy**: Utility-first styling with Tailwind CSS embedded directly inside the `rsx!` markup class attributes. The `dark` class is globally applied on the main wrapping div. UI components and modals must maintain relative or `vw/vh`-based constraints rather than hardcoded pixels to ensure they remain mobile responsive.
 - **State Mutation**: Due to Dioxus's `Signal` implementation, state mutation involves `.read()` and `.write()` semantics on contexts and hooks.
 - **Error Handling**: API logic often maps responses and maps/bubbles up errors cleanly (e.g., mapping `reqwest` errors to unit errors `()` internally in basic components).

@@ -20,7 +20,7 @@ pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> El
 
     rsx! {
         div {
-            class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none",
+            class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none p-4",
             tabindex: "0",
             onmounted: move |e| async move {
                 let _ = e.set_focus(true).await;
@@ -34,7 +34,7 @@ pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> El
                 app_state.write().delete_modal = None;
             },
             div {
-                class: "relative flex w-[400px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
+                class: "relative flex w-full max-w-[400px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
                 onclick: move |e| e.stop_propagation(),
                 div { class: "flex justify-between items-center mb-4",
                     h2 { class: "text-xl font-semibold text-destructive", "Delete ", {if is_file_clone { "File" } else { "Folder" }} }
