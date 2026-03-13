@@ -14,10 +14,8 @@ pub fn Header() -> Element {
     let mut app_state = use_context::<Signal<crate::AppState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
 
-    let menu_entries: Vec<(&str, &str)> = vec![
-        // ("Dashboard", "/dashboard"),
-        // ("Settings", "/settings"),
-        // ("Documentation", "/docs"),
+    let menu_entries = vec![
+        ("Home", Route::FileExplorer { path: vec![] }),
     ];
 
     rsx! {
@@ -47,8 +45,8 @@ pub fn Header() -> Element {
                     }
 
                     nav { class: "flex items-center gap-4 text-sm font-medium lg:gap-6",
-                        for (text , href) in menu_entries.iter() {
-                            Link { key: "{text}", href: "{href}", "{text}" }
+                        for (text , to) in menu_entries.clone() {
+                            Link { key: "{text}", to: to, "{text}" }
                         }
                     }
                 }
@@ -110,7 +108,7 @@ pub fn Header() -> Element {
                     }
 
                     if !is_menu_open() {
-                        span { class: "font-bold ml-2 flex items-center", "My App" }
+                        span { class: "font-bold ml-2 flex items-center", "JustEncrypt" }
                     }
                 }
 
@@ -162,10 +160,10 @@ pub fn Header() -> Element {
             if is_menu_open() {
                 div { class: "md:hidden border-t border-border bg-background p-4",
                     nav { class: "flex flex-col space-y-4",
-                        for (text , href) in menu_entries.iter() {
+                        for (text , to) in menu_entries.clone() {
                             MobileLink {
                                 key: "{text}",
-                                href: "{href}",
+                                to: to,
                                 onclick: move |_| is_menu_open.set(false),
                                 "{text}"
                             }
@@ -178,24 +176,25 @@ pub fn Header() -> Element {
 }
 
 #[component]
-fn Link(href: String, children: Element) -> Element {
+fn Link(to: Route, children: Element) -> Element {
     rsx! {
-        a {
+        dioxus::prelude::Link {
             class: "transition-colors hover:text-foreground/80 text-foreground/60",
-            href: "{href}",
+            to: to,
             {children}
         }
     }
 }
 
 #[component]
-fn MobileLink(href: String, onclick: EventHandler<MouseEvent>, children: Element) -> Element {
+fn MobileLink(to: Route, onclick: EventHandler<MouseEvent>, children: Element) -> Element {
     rsx! {
-        a {
+        dioxus::prelude::Link {
             class: "text-foreground hover:text-foreground/80 font-medium transition-colors",
-            href: "{href}",
+            to: to,
             onclick: move |evt| onclick.call(evt),
             {children}
         }
     }
 }
+
