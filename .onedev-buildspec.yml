@@ -21,6 +21,9 @@ jobs:
       passwordSecret: publish_token
     condition: SUCCESSFUL
     optional: false
+  triggers:
+  - type: BranchUpdateTrigger
+    userMatch: anyone
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
