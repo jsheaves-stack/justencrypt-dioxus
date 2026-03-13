@@ -52,7 +52,7 @@ pub fn Folder(file: FolderItem, current_path: Vec<String>) -> Element {
                 }
                 CardFooter {
                     div { class: "text-sm w-full h-4 flex justify-center",
-                        span { class: "block w-[90%] overflow-hidden truncate text-center text-ellipsis",
+                        span { class: "block w-[90%] overflow-hidden truncate text-center text-ellipsis h-6",
                             "{file.file_name}"
                         }
                     }
