@@ -269,7 +269,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                         "Create Folder"
                     }
                     div {
-                        class: "w-full sm:w-auto",
+                        class: "relative w-full sm:w-auto",
                         input {
                             class: "hidden",
                             id: "file-upload",
@@ -288,11 +288,15 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                         }
                         Button {
                             class: "w-full sm:w-auto",
-                            label { class: "w-full text-center cursor-pointer", r#for: "file-upload", "Upload Files" }
+                            "Upload Files"
+                        }
+                        label {
+                            class: "absolute inset-0 cursor-pointer opacity-0",
+                            r#for: "file-upload"
                         }
                     }
                     div {
-                        class: "w-full sm:w-auto",
+                        class: "relative w-full sm:w-auto",
                         input {
                             class: "hidden",
                             id: "folder-upload",
@@ -311,7 +315,11 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                         }
                         Button {
                             class: "w-full sm:w-auto",
-                            label { class: "w-full text-center cursor-pointer", r#for: "folder-upload", "Upload Folder" }
+                            "Upload Folder"
+                        }
+                        label {
+                            class: "absolute inset-0 cursor-pointer opacity-0",
+                            r#for: "folder-upload"
                         }
                     }
                 }

@@ -1,7 +1,8 @@
 use dioxus::prelude::*;
 
 use crate::components::file_explorer::{FolderItem, EDITABLE_FORMATS};
-use crate::{AppState, Route};
+use crate::requests::file::download_file;
+use crate::{AppState, ReqwestClient, Route};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ContextMenuTarget {
@@ -29,6 +30,7 @@ impl Default for ContextMenuState {
 pub fn ContextMenu() -> Element {
     let mut context_menu = use_context::<Signal<ContextMenuState>>();
     let mut app_state = use_context::<Signal<AppState>>();
+    let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
     let router = router();
 
     let state = context_menu.read().clone();
@@ -72,6 +74,8 @@ pub fn ContextMenu() -> Element {
                         let rename_path = path.clone();
                         let delete_file_name = file.file_name.clone();
                         let delete_path = path.clone();
+                        let download_file_name = file.file_name.clone();
+                        let download_path = path.clone();
 
                         rsx! {
                             div { class: "py-1 flex flex-col",
@@ -82,6 +86,17 @@ pub fn ContextMenu() -> Element {
                                             app_state.write().edit_file_modal = Some((edit_file_name.clone(), edit_path.clone()));
                                             context_menu.write().target = ContextMenuTarget::None;
                                         }
+                                    }
+                                }
+                                ContextMenuItem {
+                                    label: "Download",
+                                    onclick: move |_| {
+                                        let file_name = download_file_name.clone();
+                                        let path = download_path.clone();
+                                        spawn(async move {
+                                            let _ = download_file(reqwest_client_context, path, file_name).await;
+                                        });
+                                        context_menu.write().target = ContextMenuTarget::None;
                                     }
                                 }
                                 ContextMenuItem {

@@ -23,6 +23,7 @@ async-stream = "0.3.6"
 dioxus = { version = "0.7.3", features = ["desktop", "router"] }
 dioxus-desktop = "0.7.3"
 tokio = { version = "1.50.0", features = ["fs", "io-util"] }
+rfd = "0.15"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 dioxus = { version = "0.7.3", features = ["web", "router"] }
@@ -34,6 +35,12 @@ web-sys = { version = "0.3.91", features = [
   "ProgressEvent",
   "Event",
   "XmlHttpRequestUpload",
+  "File",
+  "Blob",
+  "HtmlAnchorElement",
+  "Window",
+  "Document",
+  "HtmlElement"
 ] }
 
 [target.wasm32-unknown-unknown.dependencies]

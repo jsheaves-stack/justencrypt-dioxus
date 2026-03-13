@@ -78,6 +78,74 @@ pub async fn delete_file(
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+pub async fn download_file(
+    _reqwest_client_context: Signal<ReqwestClient>,
+    current_path: Vec<String>,
+    file_name: String,
+) -> Result<(), ()> {
+    let file_url = format!(
+        "{}/file/{}/{}",
+        crate::api_url(),
+        current_path.join("/"),
+        file_name
+    );
+
+    let window = web_sys::window().ok_or(())?;
+    let document = window.document().ok_or(())?;
+    let a = document.create_element("a").map_err(|_| ())?;
+    let a: web_sys::HtmlAnchorElement = a.dyn_into().map_err(|_| ())?;
+    
+    a.set_href(&file_url);
+    a.set_download(&file_name);
+    
+    let body = document.body().ok_or(())?;
+    body.append_child(&a).map_err(|_| ())?;
+    
+    a.click();
+    
+    body.remove_child(&a).map_err(|_| ())?;
+    
+    Ok(())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn download_file(
+    reqwest_client_context: Signal<ReqwestClient>,
+    current_path: Vec<String>,
+    file_name: String,
+) -> Result<(), ()> {
+    if let Some(path) = rfd::AsyncFileDialog::new()
+        .set_file_name(&file_name)
+        .save_file()
+        .await
+    {
+        let file_url = format!(
+            "{}/file/{}/{}",
+            crate::api_url(),
+            current_path.join("/"),
+            file_name
+        );
+        let mut resp = reqwest_client_context()
+            .0
+            .get(&file_url)
+            .send()
+            .await
+            .map_err(|_| ())?;
+
+        if !resp.status().is_success() {
+            return Err(());
+        }
+
+        let mut file = tokio::fs::File::create(path.path()).await.map_err(|_| ())?;
+        use tokio::io::AsyncWriteExt;
+        while let Some(chunk) = resp.chunk().await.map_err(|_| ())? {
+            file.write_all(&chunk).await.map_err(|_| ())?;
+        }
+    }
+    Ok(())
+}
+
 pub async fn get_file_text(
     reqwest_client_context: Signal<ReqwestClient>,
     current_path: Vec<String>,
@@ -177,10 +245,13 @@ async fn upload_wasm(
     xhr.set_onerror(Some(on_error.as_ref().unchecked_ref()));
     on_error.forget();
 
-    let bytes = file.read_bytes().await.map_err(|_| ())?;
-    let array = js_sys::Uint8Array::from(&bytes[..]);
-    xhr.send_with_opt_buffer_source(Some(&array))
-        .map_err(|_| ())?;
+    let web_file = file
+        .inner()
+        .downcast_ref::<web_sys::File>()
+        .ok_or(())?
+        .clone();
+    let blob: &web_sys::Blob = web_file.as_ref();
+    xhr.send_with_opt_blob(Some(blob)).map_err(|_| ())?;
 
     let res = futures::select! {
         res = rx.fuse() => res.map_err(|_| ()),
@@ -232,7 +303,12 @@ async fn upload_native(
     };
 
     let body = reqwest::Body::wrap_stream(stream);
-    let mut upload_fut = client.put(url).body(body).send().fuse();
+    let mut upload_fut = client
+        .put(url)
+        .header(reqwest::header::CONTENT_LENGTH, file_len)
+        .body(body)
+        .send()
+        .fuse();
 
     loop {
         futures::select! {

@@ -14,9 +14,7 @@ pub fn Header() -> Element {
     let mut app_state = use_context::<Signal<crate::AppState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
 
-    let menu_entries = vec![
-        ("Home", Route::FileExplorer { path: vec![] }),
-    ];
+    let menu_entries = vec![("Home", Route::FileExplorer { path: vec![] })];
 
     rsx! {
         header { class: "sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
@@ -197,4 +195,3 @@ fn MobileLink(to: Route, onclick: EventHandler<MouseEvent>, children: Element) -
         }
     }
 }
-
