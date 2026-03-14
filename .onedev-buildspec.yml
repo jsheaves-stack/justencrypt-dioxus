@@ -14,7 +14,7 @@ jobs:
     name: Prepare Version
     interpreter:
       type: ShellInterpreter
-      command: |-
+      commands: |-
         BASE_VERSION=$(grep -m 1 "^version =" Cargo.toml | cut -d '"' -f 2)
         BUILD_DATE=$(date +%Y%m%d)
         BUILD_VER="${BASE_VERSION}-${BUILD_DATE}.${BUILD_NUMBER}"
