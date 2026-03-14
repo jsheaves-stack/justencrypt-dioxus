@@ -27,10 +27,10 @@ jobs:
     output:
       type: RegistryOutput
       tags: '@server@/@project_path@/@project_name@:latest @server@/@project_path@/@project_name@:@APP_VERSION@'
-      registryLogins:
-      - registryUrl: '@server_url@'
-        userName: '@job_token@'
-        passwordSecret: publish_token
+    registryLogins:
+    - registryUrl: '@server_url@'
+      userName: '@job_token@'
+      passwordSecret: publish_token
     moreOptions: --build-arg APP_VERSION=@APP_VERSION@
     condition: SUCCESSFUL
     optional: false
