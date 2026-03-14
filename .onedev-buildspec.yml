@@ -12,6 +12,7 @@ jobs:
     optional: false
   - type: CommandStep
     name: Prepare Version
+    image: alpine
     interpreter:
       type: DefaultInterpreter
       commands: |-
