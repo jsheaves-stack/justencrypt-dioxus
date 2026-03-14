@@ -81,6 +81,11 @@ pub fn Login() -> Element {
                         }
                     }
                 }
+                div { class: "mt-4 w-full text-center",
+                    span { class: "text-xs text-muted-foreground font-medium",
+                        "JustEncrypt v{crate::APP_VERSION}"
+                    }
+                }
             }
         }
     }

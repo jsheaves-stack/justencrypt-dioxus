@@ -10,15 +10,29 @@ jobs:
     withSubmodules: false
     condition: SUCCESSFUL
     optional: false
+  - type: CommandStep
+    name: Prepare Version
+    interpreter:
+      type: ShellInterpreter
+      command: |-
+        BASE_VERSION=$(grep -m 1 "^version =" Cargo.toml | cut -d '"' -f 2)
+        BUILD_DATE=$(date +%Y%m%d)
+        BUILD_VER="${BASE_VERSION}-${BUILD_DATE}.${BUILD_NUMBER}"
+        echo "Calculated version: ${BUILD_VER}"
+        echo "##onedev[set-job-variable name='APP_VERSION' value='${BUILD_VER}']"
+    condition: SUCCESSFUL
+    optional: false
   - type: BuildImageStep
     name: Docker
     output:
       type: RegistryOutput
-      tags: '@server@/@project_path@/@project_name@:latest'
+      tags: '@server@/@project_path@/@project_name@:latest, @server@/@project_path@/@project_name@:@APP_VERSION@'
     registryLogins:
     - registryUrl: '@server_url@'
       userName: '@job_token@'
       passwordSecret: publish_token
+    buildArgs:
+      - APP_VERSION=@APP_VERSION@
     condition: SUCCESSFUL
     optional: false
   triggers:

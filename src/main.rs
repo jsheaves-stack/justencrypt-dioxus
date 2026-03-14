@@ -67,10 +67,9 @@ pub struct AppState {
     pub needs_refetch: bool,
 }
 
-static TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
-static MAIN_CSS: Asset = asset!("/assets/main.css");
-static HEADER_SVG: Asset = asset!("/assets/header.svg");
-static FAVICON_ICO: Asset = asset!("/assets/favicon.ico");
+static TAILWIND_CSS: Asset = asset!("assets/tailwind.css");
+static MAIN_CSS: Asset = asset!("assets/main.css");
+static FAVICON_ICO: Asset = asset!("assets/favicon.ico");
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 pub enum Route {
@@ -88,6 +87,11 @@ pub enum Route {
 #[derive(Clone)]
 pub struct ReqwestClient(pub Client);
 
+pub const APP_VERSION: &str = match option_env!("APP_VERSION") {
+    Some(v) => v,
+    None => env!("CARGO_PKG_VERSION"),
+};
+
 fn main() {
     dioxus_logger::init(LOG_LEVEL).expect("failed to init logger");
 
@@ -104,7 +108,6 @@ fn main() {
                         .with_title("JustEncrypt")
                         .with_inner_size(dioxus_desktop::LogicalSize::new(880.0, 600.0)),
                 )
-                .with_resource_directory("assets"),
         )
         .launch(App);
 }
@@ -139,8 +142,7 @@ fn App() -> Element {
     rsx! {
         document::Stylesheet { href: TAILWIND_CSS }
         document::Stylesheet { href: MAIN_CSS }
-        document::Stylesheet { href: HEADER_SVG }
-        document::Stylesheet { href: FAVICON_ICO }
+        document::Link { rel: "icon", href: FAVICON_ICO }
 
         div { class: "dark w-full h-full",
             Router::<Route> {}

@@ -18,7 +18,7 @@ pub fn Header() -> Element {
 
     rsx! {
         header { class: "sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
-            div { class: "flex h-14 w-full p-4 items-center",
+            div { class: "flex h-16 w-full p-4 items-center",
                 div { class: "mr-4 hidden md:flex",
                     span {
                         class: "mr-6 flex items-center space-x-2 font-bold cursor-pointer",
@@ -39,7 +39,12 @@ pub fn Header() -> Element {
                             class: "h-6 w-6",
                             path { d: "M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" }
                         }
-                        span { class: "hidden font-bold sm:inline-block", "JustEncrypt" }
+                        div { class: "relative flex flex-col items-start justify-center",
+                            span { class: "hidden font-bold sm:inline-block", "JustEncrypt" }
+                            span { class: "absolute -bottom-3.5 left-0 text-[10px] text-muted-foreground font-medium whitespace-nowrap",
+                                "v{crate::APP_VERSION}"
+                            }
+                        }
                     }
 
                     nav { class: "flex items-center gap-4 text-sm font-medium lg:gap-6",
@@ -49,7 +54,7 @@ pub fn Header() -> Element {
                     }
                 }
 
-                div { class: "flex md:hidden",
+                div { class: "flex md:hidden items-center",
                     Button {
                         variant: ButtonVariant::Ghost,
                         size: ButtonSize::Icon,
@@ -106,7 +111,12 @@ pub fn Header() -> Element {
                     }
 
                     if !is_menu_open() {
-                        span { class: "font-bold ml-2 flex items-center", "JustEncrypt" }
+                        div { class: "relative flex flex-col items-start justify-center ml-2",
+                            span { class: "font-bold flex items-center", "JustEncrypt" }
+                            span { class: "absolute -bottom-3.5 left-0 text-[10px] text-muted-foreground font-medium whitespace-nowrap",
+                                "v{crate::APP_VERSION}"
+                            }
+                        }
                     }
                 }
 

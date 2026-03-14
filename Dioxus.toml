@@ -13,6 +13,11 @@ out_dir = "dist"
 # resource (assets) file folder
 asset_dir = "assets"
 
+[bundle]
+identifier = "com.justencrypt.app"
+publisher = "JustEncrypt"
+icon = ["assets/icons/icon.ico", "assets/icons/icon.png"]
+
 [web.app]
 
 # HTML title tag content

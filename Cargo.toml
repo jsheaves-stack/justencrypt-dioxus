@@ -40,7 +40,7 @@ web-sys = { version = "0.3.91", features = [
   "HtmlAnchorElement",
   "Window",
   "Document",
-  "HtmlElement"
+  "HtmlElement",
 ] }
 
 [target.wasm32-unknown-unknown.dependencies]
