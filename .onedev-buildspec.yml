@@ -1,26 +1,14 @@
 version: 44
 jobs:
 - name: build
+  buildVersion: '@groovy:def cargoContent = build.project.readBlobContent(build.commitHash, "Cargo.toml"); def matcher = (cargoContent =~ /(?m)^version\s*=\s*"([^"]+)"/); def baseVersion = matcher.find() ? matcher.group(1) : "0.0.0"; def buildDate = new Date().format("yyyyMMdd"); return "${baseVersion}-${buildDate}.${build.number}"@'
   steps:
   - type: CheckoutStep
     name: Checkout
-    cloneCredential:
+...
       type: DefaultCredential
     withLfs: false
     withSubmodules: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
-    name: Prepare Version
-    image: alpine
-    interpreter:
-      type: DefaultInterpreter
-      commands: |-
-        BASE_VERSION=$(grep -m 1 "^version =" Cargo.toml | cut -d '"' -f 2)
-        BUILD_DATE=$(date +%Y%m%d)
-        BUILD_VER="${BASE_VERSION}-${BUILD_DATE}.@build_number@"
-        echo "Calculated version: ${BUILD_VER}"
-        echo "##onedev[set-build-version value='${BUILD_VER}']"
     condition: SUCCESSFUL
     optional: false
   - type: BuildImageStep
