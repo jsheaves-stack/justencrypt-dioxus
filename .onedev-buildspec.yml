@@ -5,7 +5,7 @@ jobs:
   steps:
   - type: CheckoutStep
     name: Checkout
-...
+    cloneCredential:
       type: DefaultCredential
     withLfs: false
     withSubmodules: false
