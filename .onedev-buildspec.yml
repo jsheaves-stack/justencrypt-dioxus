@@ -10,6 +10,11 @@ jobs:
     withSubmodules: false
     condition: SUCCESSFUL
     optional: false
+  - type: SetBuildVersionStep
+    name: Set Build Version
+    buildVersion: '@param:Build Version@'
+    condition: SUCCESSFUL
+    optional: false
   - type: BuildImageStep
     name: Docker
     output:
@@ -22,9 +27,24 @@ jobs:
     moreOptions: --build-arg APP_VERSION=@build_version@
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: TextParam
+    name: Build Version
+    allowEmpty: true
+    multiline: false
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: Pending
   triggers:
   - type: BranchUpdateTrigger
     userMatch: anyone
+    paramMatrix:
+    - valuesProvider:
+        type: SpecifiedValues
+        values:
+        - - Pending
+      secret: false
+      name: Build Version
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
