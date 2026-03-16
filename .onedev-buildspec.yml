@@ -10,9 +10,22 @@ jobs:
     withSubmodules: false
     condition: SUCCESSFUL
     optional: false
+  - type: CommandStep
+    name: Generate Build Number
+    runInContainer: true
+    image: alpine
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        VERSION=$(grep -m1 '^version' Cargo.toml | cut -d '"' -f 2)
+        DATE=$(date -u +%Y%m%d)
+        echo "${VERSION}-${DATE}.@build_number@" > build_version.txt
+    useTTY: true
+    condition: SUCCESSFUL
+    optional: false
   - type: SetBuildVersionStep
     name: Set Build Version
-    buildVersion: '@param:Build Version@'
+    buildVersion: '@file:build_version.txt@'
     condition: SUCCESSFUL
     optional: false
   - type: BuildImageStep
