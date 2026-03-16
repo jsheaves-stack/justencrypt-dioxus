@@ -12,7 +12,7 @@ jobs:
     optional: false
   - type: CommandStep
     name: Generate Build Number
-    runInContainer: true
+    runInContainer: false
     image: alpine
     interpreter:
       type: DefaultInterpreter
