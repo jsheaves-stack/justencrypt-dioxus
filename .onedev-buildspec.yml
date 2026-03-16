@@ -1,4 +1,4 @@
-version: 44
+version: 46
 jobs:
 - name: build
   steps:
@@ -12,8 +12,8 @@ jobs:
     optional: false
   - type: CommandStep
     name: Generate Build Number
-    runInContainer: false
-    image: alpine
+    runInContainer: true
+    image: alpine:latest
     interpreter:
       type: DefaultInterpreter
       commands: |
