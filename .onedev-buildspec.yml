@@ -40,9 +40,7 @@ jobs:
     userMatch: anyone
     paramMatrix:
     - valuesProvider:
-        type: SpecifiedValues
-        values:
-        - - Pending
+        type: IgnoreValues
       secret: false
       name: Build Version
   retryCondition: never
