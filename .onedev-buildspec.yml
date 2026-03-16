@@ -10,16 +10,6 @@ jobs:
     withSubmodules: false
     condition: SUCCESSFUL
     optional: false
-  - type: ExecuteScriptStep
-    name: Set Version
-    script: |
-      def cargoContent = build.project.readBlobContent(build.commitHash, "Cargo.toml");
-      def matcher = (cargoContent =~ /(?m)^version\s*=\s*"([^"]+)"/);
-      def baseVersion = matcher.find() ? matcher.group(1) : "0.0.0";
-      def buildDate = new Date().format("yyyyMMdd");
-      def version = "${baseVersion}-${buildDate}.${build.number}";
-      build.setVersion(version);
-    condition: SUCCESSFUL
   - type: BuildImageStep
     name: Docker
     output:
