@@ -15,6 +15,8 @@ use crate::{
 };
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
+use std::str::FromStr;
 
 pub const IMAGE_FORMATS: [&str; 8] = ["APNG", "AVIF", "GIF", "JPG", "JPEG", "PNG", "SVG", "WebP"];
 pub const VIDEO_FORMATS: [&str; 6] = ["MP4", "WEBM", "OGG", "MOV", "AVI", "MKV"];
@@ -87,7 +89,7 @@ pub enum SortCriteria {
     TypeDesc,
 }
 
-impl std::str::FromStr for SortCriteria {
+impl FromStr for SortCriteria {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -127,6 +129,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
 
     let mut display_count = use_signal(|| 50);
     let mut sort_criteria = use_signal(|| SortCriteria::NameAsc);
+    let mut show_hidden = use_signal(|| false);
 
     let _path_for_reset = path.clone();
     use_effect(use_reactive!(|_path_for_reset| {
@@ -140,45 +143,63 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         }
     });
 
-    let path_clone = path.clone();
-    let folder_contents_for_display = match (*folder_contents_resource.value())() {
-        Some((Ok(mut files), resource_path)) => {
-            if resource_path == path_clone {
-                files.sort_by(|a, b| match *sort_criteria.read() {
-                    SortCriteria::NameAsc => {
-                        a.file_name.to_lowercase().cmp(&b.file_name.to_lowercase())
-                    }
-                    SortCriteria::NameDesc => {
-                        b.file_name.to_lowercase().cmp(&a.file_name.to_lowercase())
-                    }
-                    SortCriteria::TypeAsc => match (a.is_file, b.is_file) {
-                        (false, true) => std::cmp::Ordering::Less,
-                        (true, false) => std::cmp::Ordering::Greater,
-                        _ => {
-                            let ext_cmp = a.file_extension.cmp(&b.file_extension);
-                            if ext_cmp == std::cmp::Ordering::Equal {
-                                a.file_name.to_lowercase().cmp(&b.file_name.to_lowercase())
-                            } else {
-                                ext_cmp
-                            }
-                        }
-                    },
-                    SortCriteria::TypeDesc => match (a.is_file, b.is_file) {
-                        (false, true) => std::cmp::Ordering::Greater,
-                        (true, false) => std::cmp::Ordering::Less,
-                        _ => {
-                            let ext_cmp = b.file_extension.cmp(&a.file_extension);
-                            if ext_cmp == std::cmp::Ordering::Equal {
-                                b.file_name.to_lowercase().cmp(&a.file_name.to_lowercase())
-                            } else {
-                                ext_cmp
-                            }
-                        }
-                    },
-                });
+    let path_clone_memo = path.clone();
+    let sorted_files = use_memo(move || {
+        let resource_value = (*folder_contents_resource.value())()?;
+        let (Ok(mut files), resource_path) = resource_value else {
+            return None;
+        };
 
+        if resource_path != path_clone_memo {
+            return None;
+        }
+
+        if !*show_hidden.read() {
+            files.retain(|f| !f.file_name.starts_with('.'));
+        }
+
+        files.sort_by(|file_a, file_b| {
+            let name_comparison = file_a
+                .file_name
+                .to_lowercase()
+                .cmp(&file_b.file_name.to_lowercase());
+            let extension_comparison = file_a.file_extension.cmp(&file_b.file_extension);
+
+            match *sort_criteria.read() {
+                SortCriteria::NameAsc => name_comparison,
+                SortCriteria::NameDesc => name_comparison.reverse(),
+                SortCriteria::TypeAsc => match (file_a.is_file, file_b.is_file) {
+                    (false, true) => Ordering::Less,
+                    (true, false) => Ordering::Greater,
+                    _ => extension_comparison.then(name_comparison),
+                },
+                SortCriteria::TypeDesc => match (file_a.is_file, file_b.is_file) {
+                    (false, true) => Ordering::Greater,
+                    (true, false) => Ordering::Less,
+                    _ => extension_comparison
+                        .reverse()
+                        .then(name_comparison.reverse()),
+                },
+            }
+        });
+
+        Some(files)
+    });
+
+    let loading_spinner = rsx! {
+        div { class: "flex w-full justify-center p-12 col-span-full",
+            Spinner { class: "h-8 w-8 text-muted-foreground" }
+        }
+    };
+
+    let folder_contents_for_display = match (*folder_contents_resource.value())() {
+        Some((Err(_), _)) => {
+            vec![rsx! { div { class: "col-span-full text-destructive", "Error loading folder." } }]
+        }
+        Some((Ok(_), resource_path)) if resource_path == path => {
+            if let Some(files) = sorted_files.read().as_ref() {
                 files
-                    .into_iter()
+                    .iter()
                     .take(*display_count.read())
                     .map(|file| {
                         rsx! {
@@ -197,28 +218,24 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                     })
                     .collect::<Vec<_>>()
             } else {
-                vec![rsx! {
-                    div { class: "flex w-full justify-center p-12 col-span-full",
-                        Spinner { class: "h-8 w-8 text-muted-foreground" }
-                    }
-                }]
+                vec![loading_spinner]
             }
         }
-        Some((Err(_), _)) => {
-            vec![rsx! { div { class: "col-span-full", "Error loading folder." } }]
-        }
-        None => {
-            vec![rsx! {
-                div { class: "flex w-full justify-center p-12 col-span-full",
-                    Spinner { class: "h-8 w-8 text-muted-foreground" }
-                }
-            }]
-        }
+        _ => vec![loading_spinner],
     };
+
+    let path_clone_back = path.clone();
 
     rsx! {
         div {
-            class: "w-full h-full bg-background text-foreground overflow-scroll",
+            class: "w-full h-full bg-background text-foreground overflow-scroll focus:outline-none",
+            tabindex: "0",
+            autofocus: true,
+            onkeydown: move |evt| {
+                if evt.key().to_string() == "." {
+                    show_hidden.toggle();
+                }
+            },
             onscroll: move |evt| {
                 let data = evt.data();
                 if data.scroll_top() + (data.client_height() as f64) >= (data.scroll_height() as f64) - 1000.0 {
@@ -230,7 +247,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                 div { class: "flex-shrink-0",
                     Button {
                         onclick: move |_| {
-                            let mut new_path_vec = path_clone.clone();
+                            let mut new_path_vec = path_clone_back.clone();
                             if new_path_vec.pop().is_some() {
                                 router
                                     .push(Route::FileExplorer {

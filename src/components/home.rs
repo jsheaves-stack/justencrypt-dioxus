@@ -57,8 +57,7 @@ pub fn Home() -> Element {
     } else if !session_check.finished() {
         rsx! {
             div {
-                class: "flex h-screen w-screen items-center justify-center bg-background",
-                style: "display: flex; width: 100vw; height: 100vh; align-items: center; justify-content: center; background-color: #111216; color: white;",
+                class: "flex h-screen w-screen items-center justify-center bg-background text-foreground",
                 Spinner { class: "h-8 w-8" }
             }
         }

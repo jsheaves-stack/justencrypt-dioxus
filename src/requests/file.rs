@@ -8,6 +8,7 @@ use futures::FutureExt;
 use futures::StreamExt;
 
 use serde::Serialize;
+use std::io::Error;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -33,6 +34,12 @@ pub async fn patch_file(
         current_path.join("/"),
         old_file_name
     );
+    tracing::debug!(
+        "Patching file at {} to new name {} in folder {}",
+        file_url,
+        new_file_name,
+        new_parent_folder_path
+    );
 
     let payload = PatchFileRequest {
         parent_folder_path: new_parent_folder_path,
@@ -48,8 +55,18 @@ pub async fn patch_file(
         .await;
 
     match resp {
-        Ok(r) if r.status().is_success() => Ok(()),
-        _ => Err(()),
+        Ok(r) if r.status().is_success() => {
+            tracing::debug!("File patched successfully");
+            Ok(())
+        }
+        Ok(r) => {
+            tracing::error!("Patch file failed with status: {}", r.status());
+            Err(())
+        }
+        Err(e) => {
+            tracing::error!("Patch file request failed: {}", e);
+            Err(())
+        }
     }
 }
 
@@ -64,6 +81,7 @@ pub async fn delete_file(
         current_path.join("/"),
         file_name
     );
+    tracing::debug!("Deleting file at {}", file_url);
 
     let resp = reqwest_client_context()
         .0
@@ -73,8 +91,18 @@ pub async fn delete_file(
         .await;
 
     match resp {
-        Ok(r) if r.status().is_success() => Ok(()),
-        _ => Err(()),
+        Ok(r) if r.status().is_success() => {
+            tracing::debug!("File deleted successfully");
+            Ok(())
+        }
+        Ok(r) => {
+            tracing::error!("Delete file failed with status: {}", r.status());
+            Err(())
+        }
+        Err(e) => {
+            tracing::error!("Delete file request failed: {}", e);
+            Err(())
+        }
     }
 }
 
@@ -90,22 +118,45 @@ pub async fn download_file(
         current_path.join("/"),
         file_name
     );
+    tracing::debug!("Triggering WASM download for {}", file_url);
 
-    let window = web_sys::window().ok_or(())?;
-    let document = window.document().ok_or(())?;
-    let a = document.create_element("a").map_err(|_| ())?;
-    let a: web_sys::HtmlAnchorElement = a.dyn_into().map_err(|_| ())?;
-    
+    let window = web_sys::window().ok_or_else(|| {
+        tracing::error!("WASM download failed: no window object");
+        ()
+    })?;
+    let document = window.document().ok_or_else(|| {
+        tracing::error!("WASM download failed: no document object");
+        ()
+    })?;
+    let a = document.create_element("a").map_err(|e| {
+        tracing::error!("WASM download failed to create anchor: {:?}", e);
+        ()
+    })?;
+    let a: web_sys::HtmlAnchorElement = a.dyn_into().map_err(|e| {
+        tracing::error!("WASM download failed to cast to HtmlAnchorElement: {:?}", e);
+        ()
+    })?;
+
     a.set_href(&file_url);
     a.set_download(&file_name);
-    
-    let body = document.body().ok_or(())?;
-    body.append_child(&a).map_err(|_| ())?;
-    
+
+    let body = document.body().ok_or_else(|| {
+        tracing::error!("WASM download failed: no body object");
+        ()
+    })?;
+    body.append_child(&a).map_err(|e| {
+        tracing::error!("WASM download failed to append anchor: {:?}", e);
+        ()
+    })?;
+
     a.click();
-    
-    body.remove_child(&a).map_err(|_| ())?;
-    
+
+    body.remove_child(&a).map_err(|e| {
+        tracing::error!("WASM download failed to remove anchor: {:?}", e);
+        ()
+    })?;
+
+    tracing::debug!("WASM download triggered successfully");
     Ok(())
 }
 
@@ -126,22 +177,35 @@ pub async fn download_file(
             current_path.join("/"),
             file_name
         );
+        tracing::debug!("Downloading file from {} to {:?}", file_url, path.path());
         let mut resp = reqwest_client_context()
             .0
             .get(&file_url)
             .send()
             .await
-            .map_err(|_| ())?;
+            .map_err(|e| {
+                tracing::error!("Download request failed: {}", e);
+            })?;
 
         if !resp.status().is_success() {
+            tracing::error!("Download failed with status: {}", resp.status());
             return Err(());
         }
 
-        let mut file = tokio::fs::File::create(path.path()).await.map_err(|_| ())?;
+        let mut file = tokio::fs::File::create(path.path()).await.map_err(|e| {
+            tracing::error!("Failed to create local file: {}", e);
+        })?;
         use tokio::io::AsyncWriteExt;
-        while let Some(chunk) = resp.chunk().await.map_err(|_| ())? {
-            file.write_all(&chunk).await.map_err(|_| ())?;
+        while let Some(chunk) = resp.chunk().await.map_err(|e| {
+            tracing::error!("Failed to read chunk during download: {}", e);
+        })? {
+            file.write_all(&chunk).await.map_err(|e| {
+                tracing::error!("Failed to write chunk to local file: {}", e);
+            })?;
         }
+        tracing::debug!("File downloaded successfully");
+    } else {
+        tracing::debug!("Download cancelled by user");
     }
     Ok(())
 }
@@ -157,6 +221,7 @@ pub async fn get_file_text(
         current_path.join("/"),
         file_name
     );
+    tracing::debug!("Getting file text for {}", file_url);
 
     let resp = reqwest_client_context()
         .0
@@ -166,8 +231,21 @@ pub async fn get_file_text(
         .await;
 
     match resp {
-        Ok(r) if r.status().is_success() => r.text().await.map_err(|_| ()),
-        _ => Err(()),
+        Ok(r) if r.status().is_success() => {
+            let text = r.text().await.map_err(|e| {
+                tracing::error!("Failed to read file text response: {}", e);
+            })?;
+            tracing::debug!("Successfully retrieved file text");
+            Ok(text)
+        }
+        Ok(r) => {
+            tracing::error!("Get file text failed with status: {}", r.status());
+            Err(())
+        }
+        Err(e) => {
+            tracing::error!("Get file text request failed: {}", e);
+            Err(())
+        }
     }
 }
 
@@ -183,6 +261,7 @@ pub async fn put_file_text(
         current_path.join("/"),
         file_name
     );
+    tracing::debug!("Putting file text to {}", file_url);
 
     let resp = reqwest_client_context()
         .0
@@ -193,8 +272,18 @@ pub async fn put_file_text(
         .await;
 
     match resp {
-        Ok(r) if r.status().is_success() => Ok(()),
-        _ => Err(()),
+        Ok(r) if r.status().is_success() => {
+            tracing::debug!("Successfully updated file text");
+            Ok(())
+        }
+        Ok(r) => {
+            tracing::error!("Put file text failed with status: {}", r.status());
+            Err(())
+        }
+        Err(e) => {
+            tracing::error!("Put file text request failed: {}", e);
+            Err(())
+        }
     }
 }
 
@@ -205,8 +294,15 @@ async fn upload_wasm(
     upload_state: Signal<crate::UploadState>,
     task_index: usize,
 ) -> Result<(), ()> {
-    let xhr = XmlHttpRequest::new().map_err(|_| ())?;
-    xhr.open("PUT", &url).map_err(|_| ())?;
+    tracing::debug!("Starting WASM upload to {}", url);
+    let xhr = XmlHttpRequest::new().map_err(|e| {
+        tracing::error!("Failed to create XmlHttpRequest: {:?}", e);
+        ()
+    })?;
+    xhr.open("PUT", &url).map_err(|e| {
+        tracing::error!("Failed to open XmlHttpRequest: {:?}", e);
+        ()
+    })?;
     xhr.set_with_credentials(true);
 
     let mut upload_state_clone = upload_state;
@@ -221,7 +317,10 @@ async fn upload_wasm(
     }) as Box<dyn FnMut(_)>);
 
     xhr.upload()
-        .unwrap()
+        .map_err(|e| {
+            tracing::error!("Failed to get XMLHttpRequest upload object: {:?}", e);
+            ()
+        })?
         .set_onprogress(Some(on_progress.as_ref().unchecked_ref()));
     on_progress.forget();
 
@@ -248,17 +347,32 @@ async fn upload_wasm(
     let web_file = file
         .inner()
         .downcast_ref::<web_sys::File>()
-        .ok_or(())?
+        .ok_or_else(|| {
+            tracing::error!("Failed to downcast FileData to web_sys::File");
+            ()
+        })?
         .clone();
     let blob: &web_sys::Blob = web_file.as_ref();
-    xhr.send_with_opt_blob(Some(blob)).map_err(|_| ())?;
+    xhr.send_with_opt_blob(Some(blob)).map_err(|e| {
+        tracing::error!("Failed to send XmlHttpRequest blob: {:?}", e);
+        ()
+    })?;
 
     let res = futures::select! {
         res = rx.fuse() => res.map_err(|_| ()),
         res = err_rx.fuse() => res.map_err(|_| ()),
     };
 
-    res?
+    match res {
+        Ok(_) => {
+            tracing::debug!("WASM upload to {} completed successfully", url);
+            Ok(())
+        }
+        Err(_) => {
+            tracing::error!("WASM upload to {} failed or was rejected", url);
+            Err(())
+        }
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -270,9 +384,14 @@ async fn upload_native(
     task_index: usize,
 ) -> Result<(), ()> {
     use tokio::io::AsyncReadExt;
+    tracing::debug!("Starting native upload to {}", url);
     let file_path = file.path();
-    let file_handle = tokio::fs::File::open(&file_path).await.map_err(|_| ())?;
-    let metadata = file_handle.metadata().await.map_err(|_| ())?;
+    let file_handle = tokio::fs::File::open(&file_path).await.map_err(|e| {
+        tracing::error!("Failed to open local file for upload: {:?}", e);
+    })?;
+    let metadata = file_handle.metadata().await.map_err(|e| {
+        tracing::error!("Failed to read local file metadata: {:?}", e);
+    })?;
     let file_len = metadata.len();
 
     let (mut tx, mut rx) = futures::channel::mpsc::unbounded();
@@ -292,9 +411,10 @@ async fn upload_native(
                         100.0
                     };
                     let _ = tx.start_send(progress);
-                    yield Ok::<_, std::io::Error>(buffer[..n].to_vec());
+                    yield Ok::<_, Error>(buffer[..n].to_vec());
                 }
                 Err(e) => {
+                    tracing::error!("Error reading local file chunk: {:?}", e);
                     yield Err(e);
                     break;
                 }
@@ -304,7 +424,7 @@ async fn upload_native(
 
     let body = reqwest::Body::wrap_stream(stream);
     let mut upload_fut = client
-        .put(url)
+        .put(&url)
         .header(reqwest::header::CONTENT_LENGTH, file_len)
         .body(body)
         .send()
@@ -314,8 +434,18 @@ async fn upload_native(
         futures::select! {
             res = upload_fut => {
                 match res {
-                    Ok(r) if r.status().is_success() => return Ok(()),
-                    _ => return Err(()),
+                    Ok(r) if r.status().is_success() => {
+                        tracing::debug!("Native upload to {} completed successfully", url);
+                        return Ok(());
+                    }
+                    Ok(r) => {
+                        tracing::error!("Native upload failed with status: {}", r.status());
+                        return Err(());
+                    }
+                    Err(e) => {
+                        tracing::error!("Native upload request failed: {}", e);
+                        return Err(());
+                    }
                 }
             },
             p = rx.next() => {
@@ -337,6 +467,11 @@ pub async fn put_file(
     files: Vec<FileData>,
 ) -> Result<(), ()> {
     // Pre-populate all tasks as Pending
+    tracing::debug!(
+        "Preparing to upload {} file(s) to {:?}",
+        files.len(),
+        current_path
+    );
     let start_index = {
         let mut state = upload_state.write();
         let start = state.tasks.len();
@@ -356,7 +491,18 @@ pub async fn put_file(
     for (i, file) in files.iter().enumerate() {
         let task_index = start_index + i;
         let file_path = file.path();
-        let file_path_str = file_path.to_str().unwrap();
+        let file_path_str = match file_path.to_str() {
+            Some(path) => path,
+            None => {
+                tracing::error!("Failed to convert file path to string for upload");
+                let mut state = upload_state.write();
+                if task_index < state.tasks.len() {
+                    state.tasks[task_index].status = crate::UploadStatus::Error;
+                }
+                overall_result = Err(());
+                continue;
+            }
+        };
 
         {
             let mut state = upload_state.write();
@@ -364,6 +510,7 @@ pub async fn put_file(
                 state.tasks[task_index].status = crate::UploadStatus::Uploading;
             } else {
                 // If tasks were cleared, we should probably stop uploading further files
+                tracing::warn!("Upload tasks were unexpectedly cleared, aborting upload loop");
                 return overall_result;
             }
         }
@@ -409,5 +556,10 @@ pub async fn put_file(
         }
     }
 
+    if overall_result.is_err() {
+        tracing::error!("One or more file uploads failed");
+    } else {
+        tracing::debug!("All file uploads completed successfully");
+    }
     overall_result
 }

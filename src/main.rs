@@ -9,9 +9,15 @@ use components::{
 };
 use dioxus::prelude::*;
 use reqwest::Client;
+use std::env::var;
+use std::sync::{Arc, OnceLock};
 use tracing::Level;
 
+#[cfg(debug_assertions)]
 const LOG_LEVEL: Level = Level::DEBUG;
+
+#[cfg(not(debug_assertions))]
+const LOG_LEVEL: Level = Level::INFO;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum UploadStatus {
@@ -34,7 +40,7 @@ pub struct UploadState {
 }
 
 pub fn api_url() -> &'static str {
-    static API_URL: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    static API_URL: OnceLock<String> = OnceLock::new();
     API_URL.get_or_init(|| {
         #[cfg(target_arch = "wasm32")]
         {
@@ -50,7 +56,7 @@ pub fn api_url() -> &'static str {
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
-            std::env::var("API_URL").unwrap_or_else(|_| "http://localhost:8000".to_string())
+            var("API_URL").unwrap_or_else(|_| "http://localhost:8000".to_string())
         }
     })
 }
@@ -101,13 +107,12 @@ fn main() {
     #[cfg(not(target_arch = "wasm32"))]
     LaunchBuilder::desktop()
         .with_cfg(
-            dioxus_desktop::Config::new()
-                .with_window(
-                    dioxus_desktop::WindowBuilder::new()
-                        .with_resizable(true)
-                        .with_title("JustEncrypt")
-                        .with_inner_size(dioxus_desktop::LogicalSize::new(880.0, 600.0)),
-                )
+            dioxus_desktop::Config::new().with_window(
+                dioxus_desktop::WindowBuilder::new()
+                    .with_resizable(true)
+                    .with_title("JustEncrypt")
+                    .with_inner_size(dioxus_desktop::LogicalSize::new(880.0, 600.0)),
+            ),
         )
         .launch(App);
 }
@@ -115,7 +120,7 @@ fn main() {
 fn App() -> Element {
     #[cfg(not(target_arch = "wasm32"))]
     let client = {
-        let jar = std::sync::Arc::new(reqwest::cookie::Jar::default());
+        let jar = Arc::new(reqwest::cookie::Jar::default());
         Client::builder().cookie_provider(jar).build().unwrap()
     };
 

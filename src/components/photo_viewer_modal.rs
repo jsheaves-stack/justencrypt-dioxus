@@ -6,7 +6,7 @@ use crate::{
         file_explorer::{IMAGE_FORMATS, VIDEO_FORMATS},
         ui::spinner::Spinner,
     },
-    requests::folder::get_folder,
+    requests::{folder::get_folder, RequestBuilderExt},
     AppState, ReqwestClient,
 };
 #[cfg(not(target_arch = "wasm32"))]
@@ -110,7 +110,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
             if is_video || url.is_empty() {
                 return None;
             }
-            let resp = client.read().0.get(&url).send().await;
+            let resp = client.read().0.get(&url).with_credentials_if_wasm().send().await;
             match resp {
                 Ok(r) => {
                     let mime = r
@@ -141,7 +141,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
             if is_video || url.is_empty() {
                 return None;
             }
-            let resp = client.read().0.get(&url).send().await;
+            let resp = client.read().0.get(&url).with_credentials_if_wasm().send().await;
             match resp {
                 Ok(r) => {
                     let mime = r
@@ -371,6 +371,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                         src: "{image_url}",
                         controls: true,
                         autoplay: true,
+                        crossorigin: "use-credentials",
                         onclick: move |e| {
                             e.stop_propagation();
                         }
@@ -382,6 +383,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                         src: "{url}",
                         alt: "{current_file_name_display}",
                         draggable: "false",
+                        crossorigin: "use-credentials",
                         onclick: move |e| {
                             e.stop_propagation();
                         },

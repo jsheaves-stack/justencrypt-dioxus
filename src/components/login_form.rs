@@ -25,16 +25,24 @@ pub fn Login() -> Element {
 
     let onsubmit = move |event: FormEvent| async move {
         event.prevent_default();
+        is_loading.set(true);
 
-        let login_form: LoginForm = event.parsed_values().unwrap();
-        let create_session_result = create_session(reqwest_client_context, login_form).await;
-
-        is_loading.set(false);
-
-        if create_session_result.is_ok() {
-            app_state.write().authenticated = true;
-            router.replace(Route::Home {});
+        match event.parsed_values::<LoginForm>() {
+            Ok(login_form) => {
+                let create_session_result = create_session(reqwest_client_context, login_form).await;
+                if create_session_result.is_ok() {
+                    app_state.write().authenticated = true;
+                    router.replace(Route::Home {});
+                } else {
+                    tracing::error!("Failed to create session");
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to parse login form values: {:?}", e);
+            }
         }
+        
+        is_loading.set(false);
     };
 
     rsx! {

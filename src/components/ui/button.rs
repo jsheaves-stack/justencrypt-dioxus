@@ -1,5 +1,6 @@
 #![allow(unused)]
 use dioxus::prelude::*;
+use std::fmt;
 
 #[derive(Clone, Copy, PartialEq, Default, Debug)]
 pub enum ButtonVariant {
@@ -29,8 +30,8 @@ pub enum ButtonType {
     Reset,
 }
 
-impl std::fmt::Display for ButtonType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for ButtonType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ButtonType::Button => write!(f, "button"),
             ButtonType::Submit => write!(f, "submit"),

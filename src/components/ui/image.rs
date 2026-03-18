@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::ReqwestClient;
+use crate::{requests::RequestBuilderExt, ReqwestClient};
 #[cfg(not(target_arch = "wasm32"))]
 use base64::engine::{general_purpose, Engine};
 
@@ -17,6 +17,7 @@ pub fn Image(src: String, class: Option<String>, alt: Option<String>) -> Element
                 src: "{src}",
                 class: "{class}",
                 alt: "{alt}",
+                crossorigin: "use-credentials",
             }
         }
     }
@@ -26,7 +27,7 @@ pub fn Image(src: String, class: Option<String>, alt: Option<String>) -> Element
         let client = use_context::<Signal<ReqwestClient>>();
 
         let image_data = use_resource(use_reactive(&src, move |url| async move {
-            let resp = client.read().0.get(&url).send().await;
+            let resp = client.read().0.get(&url).with_credentials_if_wasm().send().await;
 
             match resp {
                 Ok(r) => {

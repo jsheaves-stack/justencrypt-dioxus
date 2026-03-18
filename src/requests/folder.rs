@@ -13,6 +13,7 @@ pub async fn put_folder(
         current_path.join("/"),
         folder_name
     );
+    tracing::debug!("Creating folder at {}", folder_url);
 
     let resp = reqwest_client_context()
         .0
@@ -22,8 +23,18 @@ pub async fn put_folder(
         .await;
 
     match resp {
-        Ok(r) if r.status().is_success() => Ok(()),
-        _ => Err(()),
+        Ok(r) if r.status().is_success() => {
+            tracing::debug!("Folder created successfully");
+            Ok(())
+        }
+        Ok(r) => {
+            tracing::error!("Create folder failed with status: {}", r.status());
+            Err(())
+        }
+        Err(e) => {
+            tracing::error!("Create folder request failed: {}", e);
+            Err(())
+        }
     }
 }
 
@@ -38,6 +49,7 @@ pub async fn delete_folder(
         current_path.join("/"),
         folder_name
     );
+    tracing::debug!("Deleting folder at {}", folder_url);
 
     let resp = reqwest_client_context()
         .0
@@ -47,8 +59,18 @@ pub async fn delete_folder(
         .await;
 
     match resp {
-        Ok(r) if r.status().is_success() => Ok(()),
-        _ => Err(()),
+        Ok(r) if r.status().is_success() => {
+            tracing::debug!("Folder deleted successfully");
+            Ok(())
+        }
+        Ok(r) => {
+            tracing::error!("Delete folder failed with status: {}", r.status());
+            Err(())
+        }
+        Err(e) => {
+            tracing::error!("Delete folder request failed: {}", e);
+            Err(())
+        }
     }
 }
 
@@ -57,6 +79,7 @@ pub async fn get_folder(
     current_path: Vec<String>,
 ) -> Result<Vec<FolderItem>, ()> {
     let folder_url = format!("{}/folder/{}", api_url(), current_path.join("/"));
+    tracing::debug!("Fetching folder contents from {}", folder_url);
 
     let resp = reqwest_client_context()
         .0
@@ -67,14 +90,23 @@ pub async fn get_folder(
 
     match resp {
         Ok(r) if r.status().is_success() => {
-            let response_string = r.text().await.map_err(|_| ())?;
-            let folders: Vec<FolderItem> =
-                serde_json::from_str(&response_string).map_err(|_| ())?;
+            let response_string = r.text().await.map_err(|e| {
+                tracing::error!("Failed to read folder response text: {}", e);
+                
+            })?;
+            let folders: Vec<FolderItem> = serde_json::from_str(&response_string).map_err(|e| {
+                tracing::error!("Failed to parse folder JSON: {}", e);
+                
+            })?;
+            tracing::debug!("Successfully fetched folder contents");
             Ok(folders)
         }
-        Ok(_) => Err(()),
+        Ok(r) => {
+            tracing::error!("Fetch folder failed with status: {}", r.status());
+            Err(())
+        }
         Err(e) => {
-            tracing::error!("Fetch folder failed: {}", e);
+            tracing::error!("Fetch folder request failed: {}", e);
             Err(())
         }
     }

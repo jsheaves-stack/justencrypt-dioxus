@@ -155,7 +155,14 @@ pub fn Header() -> Element {
                             size: ButtonSize::Sm,
                             onclick: move |_| {
                                 async move {
-                                    destroy_session(reqwest_client_context).await.unwrap();
+                                    match destroy_session(reqwest_client_context).await {
+                                        Ok(_) => {
+                                            tracing::info!("Successfully logged out");
+                                        }
+                                        Err(_) => {
+                                            tracing::warn!("Failed to cleanly destroy session, logging out locally anyway");
+                                        }
+                                    }
                                     app_state.write().authenticated = false;
                                 }
                             },
