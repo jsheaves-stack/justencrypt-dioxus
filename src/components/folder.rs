@@ -24,7 +24,7 @@ pub fn Folder(file: FolderItem, current_path: Vec<String>) -> Element {
 
     rsx! {
         div {
-            class: "flex justify-center p-2 sm:p-4 h-48 sm:h-64 w-full cursor-pointer",
+            class: "flex justify-center p-2 sm:p-4 h-48 sm:h-64 w-[10rem] md:w-[18rem] cursor-pointer",
             oncontextmenu: move |e| {
                 e.prevent_default();
                 e.stop_propagation();
@@ -46,11 +46,12 @@ pub fn Folder(file: FolderItem, current_path: Vec<String>) -> Element {
                 },
                 CardContent {
                     img {
-                        class: "object-contain w-1/2 h-full m-auto",
+                        class: "object-contain w-1/2 h-full m-auto h-full w-full max-h-[9rem] max-w-[9rem]",
                         src: FOLDER_ICO,
                     }
                 }
                 CardFooter {
+                    class: "overflow-hidden",
                     div { class: "text-sm w-full h-4 flex justify-center",
                         span { class: "block w-[90%] overflow-hidden truncate text-center text-ellipsis h-6",
                             "{file.file_name}"

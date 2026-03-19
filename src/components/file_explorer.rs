@@ -368,7 +368,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                 PhotoViewerModal { file_name, current_path: file_path }
             }
 
-            div { class: "h-full w-full px-4 py-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 auto-rows-max",
+            div { class: "flex flex-row flex-wrap h-min w-full px-4 py-4 gap-4 auto-rows-max",
                 {folder_contents_for_display.into_iter()}
             }
         }

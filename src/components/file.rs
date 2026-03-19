@@ -60,7 +60,7 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
 
     rsx! {
         div {
-            class: "flex justify-center p-2 sm:p-4 h-48 sm:h-64 w-full cursor-pointer",
+            class: "flex justify-center p-2 sm:p-4 h-48 sm:h-64 w-[10rem] md:w-[18rem] cursor-pointer",
             oncontextmenu: move |e| {
                 e.prevent_default();
                 e.stop_propagation();
