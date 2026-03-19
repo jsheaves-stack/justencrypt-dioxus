@@ -134,6 +134,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
     let _path_for_reset = path.clone();
     use_effect(use_reactive!(|_path_for_reset| {
         display_count.set(50);
+        let _ = document::eval("document.getElementById('file-explorer-main').scrollTop = 0;");
     }));
 
     use_effect(move || {
@@ -228,6 +229,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
 
     rsx! {
         div {
+            id: "file-explorer-main",
             class: "w-full h-full bg-background text-foreground overflow-scroll focus:outline-none",
             tabindex: "0",
             autofocus: true,

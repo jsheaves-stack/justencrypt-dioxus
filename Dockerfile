@@ -24,9 +24,11 @@ COPY . .
 RUN npm install
 RUN npm run build:css
 
-# Pass the build version to the app
+# Pass the build version and number to the app
 ARG APP_VERSION
+ARG BUILD_NUMBER
 ENV APP_VERSION=${APP_VERSION}
+ENV BUILD_NUMBER=${BUILD_NUMBER}
 
 # Build the Dioxus app for release on the web platform
 RUN dx build --release --platform web
