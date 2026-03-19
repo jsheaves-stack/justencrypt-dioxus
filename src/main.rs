@@ -4,13 +4,18 @@ mod components;
 mod requests;
 
 use components::{
-    file_explorer::FileExplorer, home::Home, login_form::Login, ui::context_menu::ContextMenuState,
-    ui::upload_modal::UploadModal,
+    file_explorer::FileExplorer,
+    home::Home,
+    login_form::Login,
+    ui::{context_menu::ContextMenuState, upload_modal::UploadModal},
 };
 use dioxus::prelude::*;
 use reqwest::Client;
+#[cfg(not(target_arch = "wasm32"))]
 use std::env::var;
-use std::sync::{Arc, OnceLock};
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::Arc;
+use std::sync::OnceLock;
 use tracing::Level;
 
 #[cfg(debug_assertions)]

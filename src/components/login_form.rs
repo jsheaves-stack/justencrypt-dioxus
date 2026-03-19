@@ -29,7 +29,8 @@ pub fn Login() -> Element {
 
         match event.parsed_values::<LoginForm>() {
             Ok(login_form) => {
-                let create_session_result = create_session(reqwest_client_context, login_form).await;
+                let create_session_result =
+                    create_session(reqwest_client_context, login_form).await;
                 if create_session_result.is_ok() {
                     app_state.write().authenticated = true;
                     router.replace(Route::Home {});
@@ -41,7 +42,7 @@ pub fn Login() -> Element {
                 tracing::error!("Failed to parse login form values: {:?}", e);
             }
         }
-        
+
         is_loading.set(false);
     };
 

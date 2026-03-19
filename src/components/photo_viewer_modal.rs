@@ -110,7 +110,13 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
             if is_video || url.is_empty() {
                 return None;
             }
-            let resp = client.read().0.get(&url).with_credentials_if_wasm().send().await;
+            let resp = client
+                .read()
+                .0
+                .get(&url)
+                .with_credentials_if_wasm()
+                .send()
+                .await;
             match resp {
                 Ok(r) => {
                     let mime = r
@@ -141,7 +147,13 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
             if is_video || url.is_empty() {
                 return None;
             }
-            let resp = client.read().0.get(&url).with_credentials_if_wasm().send().await;
+            let resp = client
+                .read()
+                .0
+                .get(&url)
+                .with_credentials_if_wasm()
+                .send()
+                .await;
             match resp {
                 Ok(r) => {
                     let mime = r

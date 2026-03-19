@@ -27,7 +27,13 @@ pub fn Image(src: String, class: Option<String>, alt: Option<String>) -> Element
         let client = use_context::<Signal<ReqwestClient>>();
 
         let image_data = use_resource(use_reactive(&src, move |url| async move {
-            let resp = client.read().0.get(&url).with_credentials_if_wasm().send().await;
+            let resp = client
+                .read()
+                .0
+                .get(&url)
+                .with_credentials_if_wasm()
+                .send()
+                .await;
 
             match resp {
                 Ok(r) => {

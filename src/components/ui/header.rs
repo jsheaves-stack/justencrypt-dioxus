@@ -157,7 +157,7 @@ pub fn Header() -> Element {
                                 async move {
                                     match destroy_session(reqwest_client_context).await {
                                         Ok(_) => {
-                                            tracing::info!("Successfully logged out");
+                                            tracing::debug!("Successfully logged out");
                                         }
                                         Err(_) => {
                                             tracing::warn!("Failed to cleanly destroy session, logging out locally anyway");

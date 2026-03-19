@@ -65,7 +65,7 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
                 e.prevent_default();
                 e.stop_propagation();
                 let coords = e.client_coordinates();
-                tracing::info!("File right-clicked at {}, {}", coords.x, coords.y);
+                tracing::debug!("File right-clicked at {}, {}", coords.x, coords.y);
                 let mut state = context_menu.write();
                 state.target = ContextMenuTarget::File(file_clone.clone(), current_path_clone.clone());
                 state.position = (coords.x, coords.y);

@@ -1,13 +1,13 @@
 use super::RequestBuilderExt;
 use crate::{api_url, ReqwestClient};
-use dioxus::prelude::*;
-use dioxus::{html::FileData, signals::Signal};
+use dioxus::{html::FileData, prelude::*, signals::Signal};
 use futures::FutureExt;
 
 #[cfg(not(target_arch = "wasm32"))]
 use futures::StreamExt;
 
 use serde::Serialize;
+#[cfg(not(target_arch = "wasm32"))]
 use std::io::Error;
 
 #[cfg(target_arch = "wasm32")]

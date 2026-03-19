@@ -1,8 +1,10 @@
 use dioxus::prelude::*;
 
 use crate::{
-    components::file_explorer::EDITABLE_FORMATS,
-    components::ui::button::{Button, ButtonVariant},
+    components::{
+        file_explorer::EDITABLE_FORMATS,
+        ui::button::{Button, ButtonVariant},
+    },
     requests::file::put_file_text,
     AppState, ReqwestClient,
 };

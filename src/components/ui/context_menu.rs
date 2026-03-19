@@ -1,8 +1,10 @@
 use dioxus::prelude::*;
 
-use crate::components::file_explorer::{FolderItem, EDITABLE_FORMATS};
-use crate::requests::file::download_file;
-use crate::{AppState, ReqwestClient, Route};
+use crate::{
+    components::file_explorer::{FolderItem, EDITABLE_FORMATS},
+    requests::file::download_file,
+    AppState, ReqwestClient, Route,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ContextMenuTarget {
@@ -39,18 +41,18 @@ pub fn ContextMenu() -> Element {
     }
 
     let (x, y) = state.position;
-    tracing::info!("Rendering context menu at {}, {}", x, y);
+    tracing::debug!("Rendering context menu at {}, {}", x, y);
 
     rsx! {
         div {
             class: "fixed inset-0 z-[9999]",
             onmousedown: move |e| {
-                tracing::info!("Overlay clicked, closing menu");
+                tracing::debug!("Overlay clicked, closing menu");
                 e.stop_propagation();
                 context_menu.write().target = ContextMenuTarget::None;
             },
             oncontextmenu: move |e| {
-                tracing::info!("Overlay right-clicked, closing menu");
+                tracing::debug!("Overlay right-clicked, closing menu");
                 e.prevent_default();
                 e.stop_propagation();
                 context_menu.write().target = ContextMenuTarget::None;

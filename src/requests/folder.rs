@@ -92,11 +92,9 @@ pub async fn get_folder(
         Ok(r) if r.status().is_success() => {
             let response_string = r.text().await.map_err(|e| {
                 tracing::error!("Failed to read folder response text: {}", e);
-                
             })?;
             let folders: Vec<FolderItem> = serde_json::from_str(&response_string).map_err(|e| {
                 tracing::error!("Failed to parse folder JSON: {}", e);
-                
             })?;
             tracing::debug!("Successfully fetched folder contents");
             Ok(folders)

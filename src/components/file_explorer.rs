@@ -15,8 +15,7 @@ use crate::{
 };
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
-use std::str::FromStr;
+use std::{cmp::Ordering, str::FromStr};
 
 pub const IMAGE_FORMATS: [&str; 8] = ["APNG", "AVIF", "GIF", "JPG", "JPEG", "PNG", "SVG", "WebP"];
 pub const VIDEO_FORMATS: [&str; 6] = ["MP4", "WEBM", "OGG", "MOV", "AVI", "MKV"];
