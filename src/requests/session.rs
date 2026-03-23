@@ -6,7 +6,7 @@ pub async fn create_session(
     reqwest_client_context: Signal<ReqwestClient>,
     login_form: LoginForm,
 ) -> Result<(), ()> {
-    let create_session_url = format!("{}/session/create", api_url());
+    let create_session_url = format!("{}/session", api_url());
     tracing::debug!("Creating session at {}", create_session_url);
 
     let resp = reqwest_client_context()
@@ -34,12 +34,12 @@ pub async fn create_session(
 }
 
 pub async fn destroy_session(reqwest_client_context: Signal<ReqwestClient>) -> Result<(), ()> {
-    let destroy_session_url = format!("{}/session/destroy", api_url());
+    let destroy_session_url = format!("{}/session", api_url());
     tracing::debug!("Destroying session at {}", destroy_session_url);
 
     let resp = reqwest_client_context()
         .0
-        .post(destroy_session_url)
+        .delete(destroy_session_url)
         .with_credentials_if_wasm()
         .send()
         .await;
