@@ -23,7 +23,7 @@ pub fn UploadModal() -> Element {
         .count();
     let total = tasks.len();
 
-    // Auto-scroll effect - only triggers when auto_scroll or active_mounted changes
+    // Auto-scroll effect
     use_effect(move || {
         if *auto_scroll.read() {
             if let Some(active) = active_mounted.read().clone() {
@@ -35,11 +35,36 @@ pub fn UploadModal() -> Element {
     });
 
     rsx! {
-        div {
-            class: "fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 w-auto sm:w-[650px] max-w-full bg-card border border-border rounded-lg shadow-xl z-[100] flex flex-col overflow-hidden",
-            div {
-                class: "bg-muted px-4 py-3 flex justify-between items-center border-b border-border shadow-sm",
-                span { class: "font-medium text-sm text-foreground", "Uploading {completed}/{total} files..." }
+        div { class: "fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 w-auto sm:w-[650px] max-w-full bg-card border border-border rounded-lg shadow-xl z-[100] flex flex-col overflow-hidden",
+            div { class: "bg-muted px-4 py-3 flex justify-between items-center border-b border-border shadow-sm",
+                div { class: "flex items-center gap-4",
+                    span { class: "font-medium text-sm text-foreground",
+                        "Uploading {completed}/{total} files..."
+                    }
+                    div { class: "flex items-center gap-2",
+                        span { class: "text-xs text-muted-foreground", "Active limit:" }
+                        select {
+                            class: "text-xs bg-background text-foreground border border-border rounded px-1 py-0.5",
+                            value: "{upload_state.read().max_concurrent}",
+                            onchange: move |e| {
+                                if let Ok(val) = e.value().parse::<usize>() {
+                                    upload_state.write().max_concurrent = val;
+                                }
+                            },
+                            option { value: "1", "1" }
+                            option { value: "5", "5" }
+                            option { value: "10", "10" }
+                            option { value: "15", "15" }
+                            option { value: "20", "20" }
+                            option { value: "25", "25" }
+                            option { value: "30", "30" }
+                            option { value: "35", "35" }
+                            option { value: "40", "40" }
+                            option { value: "45", "45" }
+                            option { value: "50", "50" }
+                        }
+                    }
+                }
                 button {
                     class: "text-muted-foreground hover:text-foreground p-1 rounded transition-colors",
                     onclick: move |_| {
@@ -63,14 +88,18 @@ pub fn UploadModal() -> Element {
                     }
                     check_pending.set(true);
                     spawn(async move {
-                        if let (Some(active), Some(container)) = (active_mounted.read().clone(), container_mounted.read().clone()) {
-                            if let (Ok(a_rect), Ok(c_rect)) = (active.get_client_rect().await, container.get_client_rect().await) {
-                                // Viewport coordinates check
-                                let is_visible = (a_rect.origin.y + 5.0) < c_rect.max_y() && (a_rect.max_y() - 5.0) > c_rect.origin.y;
-
+                        if let (Some(active), Some(container)) = (
+                            active_mounted.read().clone(),
+                            container_mounted.read().clone(),
+                        ) {
+                            if let (Ok(a_rect), Ok(c_rect)) = (
+                                active.get_client_rect().await,
+                                container.get_client_rect().await,
+                            ) {
+                                let is_visible = (a_rect.origin.y + 5.0) < c_rect.max_y()
+                                    && (a_rect.max_y() - 5.0) > c_rect.origin.y;
                                 let prev_visible = *was_visible.read();
                                 if is_visible && !prev_visible && !*auto_scroll.read() {
-                                    // User scrolled back to the item, resume auto-scroll
                                     auto_scroll.set(true);
                                 }
                                 was_visible.set(is_visible);
@@ -79,7 +108,7 @@ pub fn UploadModal() -> Element {
                         check_pending.set(false);
                     });
                 },
-                for (i, task) in tasks.clone().into_iter().enumerate() {
+                for (i , task) in tasks.clone().into_iter().enumerate() {
                     div {
                         key: "{i}-{task.status == UploadStatus::Uploading}",
                         onmounted: move |e| {
@@ -87,17 +116,17 @@ pub fn UploadModal() -> Element {
                                 active_mounted.set(Some(e.data()));
                             }
                         },
-                        class: if task.status == UploadStatus::Uploading {
-                            "flex flex-col text-sm px-3 py-2 rounded-md transition-colors is-uploading bg-muted/50"
-                        } else {
-                            "flex flex-col text-sm px-3 py-2 rounded-md transition-colors"
-                        },
+                        class: if task.status == UploadStatus::Uploading { "flex flex-col text-sm px-3 py-2 rounded-md transition-colors is-uploading bg-muted/50" } else { "flex flex-col text-sm px-3 py-2 rounded-md transition-colors" },
                         div { class: "flex items-center justify-between",
-                            span { class: "truncate w-[450px] text-foreground font-medium", "{task.file_name}" }
+                            span { class: "truncate w-[450px] text-foreground font-medium",
+                                "{task.file_name}"
+                            }
                             span {
                                 class: match task.status {
                                     UploadStatus::Pending => "text-muted-foreground text-xs whitespace-nowrap",
-                                    UploadStatus::Uploading => "text-blue-500 animate-pulse text-xs whitespace-nowrap font-bold",
+                                    UploadStatus::Uploading => {
+                                        "text-blue-500 animate-pulse text-xs whitespace-nowrap font-bold"
+                                    }
                                     UploadStatus::Done => "text-green-500 text-xs whitespace-nowrap font-bold",
                                     UploadStatus::Error => "text-red-500 text-xs whitespace-nowrap font-bold",
                                 },
@@ -114,10 +143,12 @@ pub fn UploadModal() -> Element {
                                 div { class: "flex-grow h-1.5 bg-muted rounded-full overflow-hidden",
                                     div {
                                         class: "h-full bg-blue-500 transition-all duration-300 ease-out",
-                                        style: "width: {task.progress}%"
+                                        style: "width: {task.progress}%",
                                     }
                                 }
-                                span { class: "text-[10px] text-muted-foreground font-mono w-8 text-right", "{task.progress:.0}%" }
+                                span { class: "text-[10px] text-muted-foreground font-mono w-8 text-right",
+                                    "{task.progress:.0}%"
+                                }
                             }
                         }
                     }

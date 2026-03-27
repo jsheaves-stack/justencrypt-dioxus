@@ -40,9 +40,8 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
             for file in files {
                 if file.is_file {
                     if let Some(ext) = &file.file_extension {
-                        let ext_upper = ext.to_uppercase();
-                        if IMAGE_FORMATS.contains(&ext_upper.as_str())
-                            || VIDEO_FORMATS.contains(&ext_upper.as_str())
+                        if IMAGE_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f))
+                            || VIDEO_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f))
                         {
                             media.push(file.clone());
                         }
@@ -79,7 +78,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
 
     let is_video = current_file.as_ref().is_some_and(|f| {
         if let Some(ext) = &f.file_extension {
-            return VIDEO_FORMATS.contains(&ext.to_uppercase().as_str());
+            return VIDEO_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f));
         }
         false
     });
@@ -241,19 +240,22 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                 let state = app_state.read();
                 if let Some((current_name, path)) = state.photo_viewer_modal.clone() {
                     let files = media_files.read();
-                    let current_idx = files.iter().position(|f| f.file_name == current_name).unwrap_or(0);
+                    let current_idx = files
 
+                        .iter()
+                        .position(|f| f.file_name == current_name)
+                        .unwrap_or(0);
                     match e.key().to_string().as_str() {
                         "ArrowRight" => {
                             if current_idx + 1 < files.len() {
                                 let next_name = files[current_idx + 1].file_name.clone();
-                                drop(state); // Drop the read lock before writing
+                                drop(state);
                                 scale.set(1.0);
                                 offset_x.set(0.0);
                                 offset_y.set(0.0);
                                 app_state.write().photo_viewer_modal = Some((next_name, path));
                             }
-                        },
+                        }
                         "ArrowLeft" => {
                             if current_idx > 0 {
                                 let prev_name = files[current_idx - 1].file_name.clone();
@@ -263,11 +265,11 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                                 offset_y.set(0.0);
                                 app_state.write().photo_viewer_modal = Some((prev_name, path));
                             }
-                        },
+                        }
                         "Escape" => {
                             drop(state);
                             app_state.write().photo_viewer_modal = None;
-                        },
+                        }
                         _ => {}
                     }
                 }
@@ -275,10 +277,14 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
 
             // Header bar
             div { class: "absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-[10000] bg-gradient-to-b from-black/80 to-transparent",
-                h2 { class: "text-white text-lg font-semibold drop-shadow-md", "{current_file_name_display}" }
+                h2 { class: "text-white text-lg font-semibold drop-shadow-md",
+                    "{current_file_name_display}"
+                }
                 div { class: "flex items-center gap-4",
                     if is_loading_full {
-                        span { class: "text-white/70 text-sm animate-pulse", "Loading full resolution..." }
+                        span { class: "text-white/70 text-sm animate-pulse",
+                            "Loading full resolution..."
+                        }
                     }
                     if !is_video {
                         div { class: "flex items-center bg-black/60 rounded-lg p-1 backdrop-blur-md",
@@ -297,12 +303,16 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                                 },
                                 "➖"
                             }
-                            span { class: "text-white text-sm min-w-[3ch] text-center", "{(scale() * 100.0).round()}%" }
+                            span { class: "text-white text-sm min-w-[3ch] text-center",
+                                "{(scale() * 100.0).round()}%"
+                            }
                             button {
                                 class: "p-2 text-white hover:bg-white/20 rounded",
                                 onclick: move |_| {
                                     let current = scale();
-                                    if current < 5.0 { scale.set(current + 0.25); }
+                                    if current < 5.0 {
+                                        scale.set(current + 0.25);
+                                    }
                                 },
                                 "➕"
                             }
@@ -327,7 +337,10 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                         let state = app_state.read();
                         if let Some((current_name, path)) = state.photo_viewer_modal.clone() {
                             let files = media_files.read();
-                            let current_idx = files.iter().position(|f| f.file_name == current_name).unwrap_or(0);
+                            let current_idx = files
+                                .iter()
+                                .position(|f| f.file_name == current_name)
+                                .unwrap_or(0);
                             if current_idx > 0 {
                                 let prev_name = files[current_idx - 1].file_name.clone();
                                 drop(state);
@@ -338,9 +351,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                             }
                         }
                     },
-                    span {
-                        "◀"
-                    }
+                    span { "◀" }
                 }
             }
 
@@ -353,7 +364,10 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                         let state = app_state.read();
                         if let Some((current_name, path)) = state.photo_viewer_modal.clone() {
                             let files = media_files.read();
-                            let current_idx = files.iter().position(|f| f.file_name == current_name).unwrap_or(0);
+                            let current_idx = files
+                                .iter()
+                                .position(|f| f.file_name == current_name)
+                                .unwrap_or(0);
                             if current_idx + 1 < files.len() {
                                 let next_name = files[current_idx + 1].file_name.clone();
                                 drop(state);
@@ -364,9 +378,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                             }
                         }
                     },
-                    span {
-                        "▶"
-                    }
+                    span { "▶" }
                 }
             }
 
@@ -386,7 +398,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                         crossorigin: "use-credentials",
                         onclick: move |e| {
                             e.stop_propagation();
-                        }
+                        },
                     }
                 } else if let Some(url) = display_url {
                     img {
@@ -440,7 +452,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                         },
                         onmouseleave: move |_| {
                             is_dragging.set(false);
-                        }
+                        },
                     }
                 } else {
                     div { class: "flex flex-col items-center justify-center gap-4",

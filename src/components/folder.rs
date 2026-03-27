@@ -31,7 +31,10 @@ pub fn Folder(file: FolderItem, current_path: Vec<String>) -> Element {
                 let coords = e.client_coordinates();
                 tracing::debug!("Folder right-clicked at {}, {}", coords.x, coords.y);
                 let mut state = context_menu.write();
-                state.target = ContextMenuTarget::Folder(file_clone.clone(), current_path_clone.clone());
+                state.target = ContextMenuTarget::Folder(
+                    file_clone.clone(),
+                    current_path_clone.clone(),
+                );
                 state.position = (coords.x, coords.y);
             },
             Card {
@@ -50,8 +53,7 @@ pub fn Folder(file: FolderItem, current_path: Vec<String>) -> Element {
                         src: FOLDER_ICO,
                     }
                 }
-                CardFooter {
-                    class: "overflow-hidden",
+                CardFooter { class: "overflow-hidden",
                     div { class: "text-sm w-full h-4 flex justify-center",
                         span { class: "block w-[90%] overflow-hidden truncate text-center text-ellipsis h-6",
                             "{file.file_name}"

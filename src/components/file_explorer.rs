@@ -127,7 +127,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         }));
 
     let mut display_count = use_signal(|| 50);
-    let mut sort_criteria = use_signal(|| SortCriteria::NameAsc);
+    let mut sort_criteria = use_signal(|| SortCriteria::TypeAsc);
     let mut show_hidden = use_signal(|| false);
 
     let _path_for_reset = path.clone();
@@ -161,8 +161,9 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         files.sort_by(|file_a, file_b| {
             let name_comparison = file_a
                 .file_name
-                .to_lowercase()
-                .cmp(&file_b.file_name.to_lowercase());
+                .chars()
+                .map(|c| c.to_ascii_lowercase())
+                .cmp(file_b.file_name.chars().map(|c| c.to_ascii_lowercase()));
             let extension_comparison = file_a.file_extension.cmp(&file_b.file_extension);
 
             match *sort_criteria.read() {
@@ -239,7 +240,9 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
             },
             onscroll: move |evt| {
                 let data = evt.data();
-                if data.scroll_top() + (data.client_height() as f64) >= (data.scroll_height() as f64) - 1000.0 {
+                if data.scroll_top() + (data.client_height() as f64)
+                    >= (data.scroll_height() as f64) - 1000.0
+                {
                     display_count += 50;
                 }
             },
@@ -267,10 +270,10 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                                 sort_criteria.set(val);
                             }
                         },
-                        option { value: "NameAsc", "Name (A-Z)" }
-                        option { value: "NameDesc", "Name (Z-A)" }
                         option { value: "TypeAsc", "Type (A-Z)" }
                         option { value: "TypeDesc", "Type (Z-A)" }
+                        option { value: "NameAsc", "Name (A-Z)" }
+                        option { value: "NameDesc", "Name (Z-A)" }
                     }
                     Button {
                         class: "w-full sm:w-auto",
@@ -286,8 +289,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                         },
                         "Create Folder"
                     }
-                    div {
-                        class: "relative w-full sm:w-auto",
+                    div { class: "relative w-full sm:w-auto",
                         input {
                             class: "hidden",
                             id: "file-upload",
@@ -298,23 +300,25 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                                 spawn(async move {
                                     let files = e.files();
                                     if !files.is_empty() {
-                                        let _ = put_file(reqwest_client_context, upload_state, current_path.clone(), files).await;
+                                        let _ = put_file(
+                                                reqwest_client_context,
+                                                upload_state,
+                                                current_path.clone(),
+                                                files,
+                                            )
+                                            .await;
                                         app_state.write().needs_refetch = true;
                                     }
                                 });
                             },
                         }
-                        Button {
-                            class: "w-full sm:w-auto",
-                            "Upload Files"
-                        }
+                        Button { class: "w-full sm:w-auto", "Upload Files" }
                         label {
                             class: "absolute inset-0 cursor-pointer opacity-0",
-                            r#for: "file-upload"
+                            r#for: "file-upload",
                         }
                     }
-                    div {
-                        class: "relative w-full sm:w-auto",
+                    div { class: "relative w-full sm:w-auto",
                         input {
                             class: "hidden",
                             id: "folder-upload",
@@ -325,19 +329,22 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                                 spawn(async move {
                                     let files = e.files();
                                     if !files.is_empty() {
-                                        let _ = put_file(reqwest_client_context, upload_state, current_path.clone(), files).await;
+                                        let _ = put_file(
+                                                reqwest_client_context,
+                                                upload_state,
+                                                current_path.clone(),
+                                                files,
+                                            )
+                                            .await;
                                         app_state.write().needs_refetch = true;
                                     }
                                 });
                             },
                         }
-                        Button {
-                            class: "w-full sm:w-auto",
-                            "Upload Folder"
-                        }
+                        Button { class: "w-full sm:w-auto", "Upload Folder" }
                         label {
                             class: "absolute inset-0 cursor-pointer opacity-0",
-                            r#for: "folder-upload"
+                            r#for: "folder-upload",
                         }
                     }
                 }

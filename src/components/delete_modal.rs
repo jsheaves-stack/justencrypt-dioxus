@@ -37,7 +37,10 @@ pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> El
                 class: "relative flex w-full max-w-[400px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
                 onclick: move |e| e.stop_propagation(),
                 div { class: "flex justify-between items-center mb-4",
-                    h2 { class: "text-xl font-semibold text-destructive", "Delete ", {if is_file_clone { "File" } else { "Folder" }} }
+                    h2 { class: "text-xl font-semibold text-destructive",
+                        "Delete "
+                        {if is_file_clone { "File" } else { "Folder" }}
+                    }
                     button {
                         class: "text-muted-foreground hover:text-foreground p-2",
                         onclick: move |_| {
@@ -49,10 +52,10 @@ pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> El
 
                 div { class: "flex flex-col gap-4 my-4",
                     p {
-                        "Are you sure you want to permanently delete the ",
-                        {if is_file_clone { "file" } else { "folder" }},
-                        " '",
-                        span { class: "font-semibold", "{name}" },
+                        "Are you sure you want to permanently delete the "
+                        {if is_file_clone { "file" } else { "folder" }}
+                        " '"
+                        span { class: "font-semibold", "{name}" }
                         "'? This action cannot be undone."
                     }
                     if let Some(err) = error_msg.read().as_ref() {
@@ -92,13 +95,25 @@ pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> El
                                     }
                                     Err(_) => {
                                         is_deleting.set(false);
-                                        error_msg.set(Some(format!("Failed to delete {}", if is_file_flag { "file" } else { "folder" })));
+                                        error_msg
+                                            .set(
+                                                Some(
+                                                    format!(
+                                                        "Failed to delete {}",
+                                                        if is_file_flag { "file" } else { "folder" },
+                                                    ),
+                                                ),
+                                            );
                                     }
                                 }
                             });
                         },
                         disabled: is_deleting(),
-                        if is_deleting() { "Deleting..." } else { "Delete" }
+                        if is_deleting() {
+                            "Deleting..."
+                        } else {
+                            "Delete"
+                        }
                     }
                 }
             }

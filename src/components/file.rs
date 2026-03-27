@@ -22,21 +22,17 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
     let current_path_clone = current_path.clone();
     let current_path_clone_click = current_path.clone();
 
-    let is_image = match file.file_extension.as_deref() {
-        Some(ext) => {
-            let ext_upper = ext.to_uppercase();
-            IMAGE_FORMATS.contains(&ext_upper.as_str())
-        }
-        _ => false,
-    };
+    let is_image = file
+        .file_extension
+        .as_deref()
+        .map(|ext| IMAGE_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f)))
+        .unwrap_or(false);
 
-    let is_video = match file.file_extension.as_deref() {
-        Some(ext) => {
-            let ext_upper = ext.to_uppercase();
-            VIDEO_FORMATS.contains(&ext_upper.as_str())
-        }
-        _ => false,
-    };
+    let is_video = file
+        .file_extension
+        .as_deref()
+        .map(|ext| VIDEO_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f)))
+        .unwrap_or(false);
 
     let is_media = is_image || is_video;
 
@@ -67,7 +63,10 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
                 let coords = e.client_coordinates();
                 tracing::debug!("File right-clicked at {}, {}", coords.x, coords.y);
                 let mut state = context_menu.write();
-                state.target = ContextMenuTarget::File(file_clone.clone(), current_path_clone.clone());
+                state.target = ContextMenuTarget::File(
+                    file_clone.clone(),
+                    current_path_clone.clone(),
+                );
                 state.position = (coords.x, coords.y);
             },
             Card {
@@ -100,9 +99,18 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
                                 "stroke-linejoin": "round",
                                 class: "mb-2",
                                 path { d: "m15 10 4.553-2.276A1 1 0 0 1 21 8.618v6.764a1 1 0 0 1-1.447.894L15 14v-4z" }
-                                rect { x: "3", y: "6", width: "12", height: "12", rx: "2", ry: "2" }
+                                rect {
+                                    x: "3",
+                                    y: "6",
+                                    width: "12",
+                                    height: "12",
+                                    rx: "2",
+                                    ry: "2",
+                                }
                             }
-                            span { class: "font-bold text-xl uppercase tracking-wider", "VIDEO" }
+                            span { class: "font-bold text-xl uppercase tracking-wider",
+                                "VIDEO"
+                            }
                         }
                     } else {
                         div { class: "flex items-center justify-center w-3/4 h-3/4 bg-secondary/20 rounded-xl border-2 border-border text-muted-foreground font-bold text-3xl uppercase tracking-wider shadow-inner",

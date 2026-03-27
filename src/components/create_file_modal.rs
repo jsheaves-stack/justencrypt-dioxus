@@ -91,7 +91,7 @@ pub fn CreateFileModal(current_path: Vec<String>) -> Element {
                         value: "{file_content.read()}",
                         oninput: move |e| {
                             file_content.set(e.value());
-                        }
+                        },
                     }
                 }
 
@@ -118,7 +118,14 @@ pub fn CreateFileModal(current_path: Vec<String>) -> Element {
 
                             is_saving.set(true);
                             spawn(async move {
-                                match put_file_text(reqwest_client_context, current_path, full_file_name, text).await {
+                                match put_file_text(
+                                        reqwest_client_context,
+                                        current_path,
+                                        full_file_name,
+                                        text,
+                                    )
+                                    .await
+                                {
                                     Ok(_) => {
                                         is_saving.set(false);
                                         app_state.write().create_file_modal = false;
@@ -132,7 +139,11 @@ pub fn CreateFileModal(current_path: Vec<String>) -> Element {
                             });
                         },
                         disabled: is_saving(),
-                        if is_saving() { "Creating..." } else { "Create" }
+                        if is_saving() {
+                            "Creating..."
+                        } else {
+                            "Create"
+                        }
                     }
                 }
             }

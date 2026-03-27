@@ -56,8 +56,7 @@ pub fn Home() -> Element {
         }
     } else if !session_check.finished() {
         rsx! {
-            div {
-                class: "flex h-screen w-screen items-center justify-center bg-background text-foreground",
+            div { class: "flex h-screen w-screen items-center justify-center bg-background text-foreground",
                 Spinner { class: "h-8 w-8" }
             }
         }

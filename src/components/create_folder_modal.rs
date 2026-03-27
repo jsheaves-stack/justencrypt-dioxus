@@ -93,7 +93,11 @@ pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
                             });
                         },
                         disabled: is_saving(),
-                        if is_saving() { "Saving..." } else { "Create" }
+                        if is_saving() {
+                            "Saving..."
+                        } else {
+                            "Create"
+                        }
                     }
                 }
             }

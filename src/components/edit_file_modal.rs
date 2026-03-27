@@ -69,7 +69,7 @@ pub fn EditFileModal(file_name: String, current_path: Vec<String>) -> Element {
                             value: "{content}",
                             oninput: move |e| {
                                 file_content.set(Some(e.value()));
-                            }
+                            },
                         }
                     } else {
                         div { class: "flex items-center justify-center h-full",
@@ -93,14 +93,19 @@ pub fn EditFileModal(file_name: String, current_path: Vec<String>) -> Element {
                             let file_name = file_name.clone();
                             is_saving.set(true);
                             spawn(async move {
-                                let _ = put_file_text(reqwest_client_context, current_path, file_name, text).await;
+                                let _ = put_file_text(reqwest_client_context, current_path, file_name, text)
+                                    .await;
                                 is_saving.set(false);
                                 app_state.write().edit_file_modal = None;
                                 app_state.write().needs_refetch = true;
                             });
                         },
                         disabled: is_saving(),
-                        if is_saving() { "Saving..." } else { "Save" }
+                        if is_saving() {
+                            "Saving..."
+                        } else {
+                            "Save"
+                        }
                     }
                 }
             }

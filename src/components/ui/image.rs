@@ -61,11 +61,7 @@ pub fn Image(src: String, class: Option<String>, alt: Option<String>) -> Element
                 let data_url = format!("data:{};base64,{}", mime, b64);
 
                 rsx! {
-                    img {
-                        src: "{data_url}",
-                        class: "{class}",
-                        alt: "{alt}",
-                    }
+                    img { src: "{data_url}", class: "{class}", alt: "{alt}" }
                 }
             }
             Some(None) => rsx! {

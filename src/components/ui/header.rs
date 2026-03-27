@@ -49,7 +49,7 @@ pub fn Header() -> Element {
 
                     nav { class: "flex items-center gap-4 text-sm font-medium lg:gap-6",
                         for (text , to) in menu_entries.clone() {
-                            Link { key: "{text}", to: to, "{text}" }
+                            Link { key: "{text}", to, "{text}" }
                         }
                     }
                 }
@@ -160,7 +160,9 @@ pub fn Header() -> Element {
                                             tracing::debug!("Successfully logged out");
                                         }
                                         Err(_) => {
-                                            tracing::warn!("Failed to cleanly destroy session, logging out locally anyway");
+                                            tracing::warn!(
+                                                "Failed to cleanly destroy session, logging out locally anyway"
+                                            );
                                         }
                                     }
                                     app_state.write().authenticated = false;
@@ -178,7 +180,7 @@ pub fn Header() -> Element {
                         for (text , to) in menu_entries.clone() {
                             MobileLink {
                                 key: "{text}",
-                                to: to,
+                                to,
                                 onclick: move |_| is_menu_open.set(false),
                                 "{text}"
                             }
@@ -195,7 +197,7 @@ fn Link(to: Route, children: Element) -> Element {
     rsx! {
         dioxus::prelude::Link {
             class: "transition-colors hover:text-foreground/80 text-foreground/60",
-            to: to,
+            to,
             {children}
         }
     }
@@ -206,7 +208,7 @@ fn MobileLink(to: Route, onclick: EventHandler<MouseEvent>, children: Element) -
     rsx! {
         dioxus::prelude::Link {
             class: "text-foreground hover:text-foreground/80 font-medium transition-colors",
-            to: to,
+            to,
             onclick: move |evt| onclick.call(evt),
             {children}
         }

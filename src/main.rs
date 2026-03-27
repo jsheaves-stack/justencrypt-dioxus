@@ -2,6 +2,9 @@
 
 mod components;
 mod requests;
+pub mod state;
+
+pub use state::*;
 
 use components::{
     file_explorer::FileExplorer,
@@ -24,58 +27,20 @@ const LOG_LEVEL: Level = Level::DEBUG;
 #[cfg(not(debug_assertions))]
 const LOG_LEVEL: Level = Level::INFO;
 
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum UploadStatus {
-    Pending,
-    Uploading,
-    Done,
-    Error,
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct UploadTask {
-    pub file_name: String,
-    pub status: UploadStatus,
-    pub progress: f64,
-}
-
-#[derive(Clone, PartialEq, Debug, Default)]
-pub struct UploadState {
-    pub tasks: Vec<UploadTask>,
-}
-
 pub fn api_url() -> &'static str {
     static API_URL: OnceLock<String> = OnceLock::new();
     API_URL.get_or_init(|| {
         #[cfg(target_arch = "wasm32")]
         {
-            if let Ok(val) = js_sys::Reflect::get(
-                &js_sys::global(),
-                &wasm_bindgen::JsValue::from_str("API_URL"),
-            ) {
-                if let Some(s) = val.as_string() {
-                    return s;
-                }
-            }
-            "http://localhost:8000".to_string()
+            option_env!("API_URL")
+                .unwrap_or("http://localhost:8000")
+                .to_string()
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
             var("API_URL").unwrap_or_else(|_| "http://localhost:8000".to_string())
         }
     })
-}
-
-pub struct AppState {
-    pub _theme: String,
-    pub authenticated: bool,
-    pub create_folder_modal: bool,
-    pub create_file_modal: bool,
-    pub edit_file_modal: Option<(String, Vec<String>)>,
-    pub rename_modal: Option<(String, Vec<String>, bool)>, // (old_name, path, is_file)
-    pub delete_modal: Option<(String, Vec<String>, bool)>, // (name, path, is_file)
-    pub photo_viewer_modal: Option<(String, Vec<String>)>, // (file_name, current_path)
-    pub needs_refetch: bool,
 }
 
 static TAILWIND_CSS: Asset = asset!("assets/tailwind.css");
@@ -94,9 +59,6 @@ pub enum Route {
     #[route("/folder/:..path")]
     FileExplorer { path: Vec<String> },
 }
-
-#[derive(Clone)]
-pub struct ReqwestClient(pub Client);
 
 pub const APP_VERSION: &str = match option_env!("APP_VERSION") {
     Some(v) => v,

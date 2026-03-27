@@ -35,7 +35,10 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
                 class: "relative flex w-full max-w-[400px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
                 onclick: move |e| e.stop_propagation(),
                 div { class: "flex justify-between items-center mb-4",
-                    h2 { class: "text-xl font-semibold", "Rename ", {if is_file_clone { "File" } else { "Folder" }} }
+                    h2 { class: "text-xl font-semibold",
+                        "Rename "
+                        {if is_file_clone { "File" } else { "Folder" }}
+                    }
                     button {
                         class: "text-muted-foreground hover:text-foreground p-2",
                         onclick: move |_| {
@@ -95,7 +98,16 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
                             spawn(async move {
                                 if is_file_flag {
                                     let new_parent_path = current_path.join("/");
-                                    match patch_file(reqwest_client_context, current_path.clone(), old_name_str, new_parent_path, new_name_str).await {
+                                    match patch_file(
+                                            // API doesn't support folder rename yet based on the spec
+                                            reqwest_client_context,
+                                            current_path.clone(),
+                                            old_name_str,
+                                            new_parent_path,
+                                            new_name_str,
+                                        )
+                                        .await
+                                    {
                                         Ok(_) => {
                                             is_saving.set(false);
                                             app_state.write().rename_modal = None;
@@ -107,14 +119,20 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
                                         }
                                     }
                                 } else {
-                                    // API doesn't support folder rename yet based on the spec
                                     is_saving.set(false);
-                                    error_msg.set(Some("Folder renaming is not supported by API yet".to_string()));
+                                    error_msg
+                                        .set(
+                                            Some("Folder renaming is not supported by API yet".to_string()),
+                                        );
                                 }
                             });
                         },
                         disabled: is_saving(),
-                        if is_saving() { "Saving..." } else { "Save" }
+                        if is_saving() {
+                            "Saving..."
+                        } else {
+                            "Save"
+                        }
                     }
                 }
             }
