@@ -71,11 +71,14 @@ pub async fn patch_file(
 
     match resp {
         Ok(r) if r.status().is_success() => {
+            let _ = r.bytes().await;
             tracing::debug!("File patched successfully");
             Ok(())
         }
         Ok(r) => {
-            tracing::error!("Patch file failed with status: {}", r.status());
+            let status = r.status();
+            let _ = r.bytes().await;
+            tracing::error!("Patch file failed with status: {}", status);
             Err(())
         }
         Err(e) => {
@@ -107,11 +110,14 @@ pub async fn delete_file(
 
     match resp {
         Ok(r) if r.status().is_success() => {
+            let _ = r.bytes().await;
             tracing::debug!("File deleted successfully");
             Ok(())
         }
         Ok(r) => {
-            tracing::error!("Delete file failed with status: {}", r.status());
+            let status = r.status();
+            let _ = r.bytes().await;
+            tracing::error!("Delete file failed with status: {}", status);
             Err(())
         }
         Err(e) => {
@@ -287,11 +293,14 @@ pub async fn put_file_text(
 
     match resp {
         Ok(r) if r.status().is_success() => {
+            let _ = r.bytes().await;
             tracing::debug!("Successfully updated file text");
             Ok(())
         }
         Ok(r) => {
-            tracing::error!("Put file text failed with status: {}", r.status());
+            let status = r.status();
+            let _ = r.bytes().await;
+            tracing::error!("Put file text failed with status: {}", status);
             Err(())
         }
         Err(e) => {
@@ -324,7 +333,7 @@ async fn upload_chunk_with_retry(
     client: &reqwest::Client,
     upload_id: &str,
     offset: u64,
-    chunk_data: Vec<u8>,
+    chunk_data: bytes::Bytes,
 ) -> Result<(), ()> {
     let chunk_url = format!(
         "{}/file/upload/chunk/{}?offset={}",
@@ -345,12 +354,17 @@ async fn upload_chunk_with_retry(
             .await;
 
         match resp {
-            Ok(r) if r.status().is_success() => return Ok(()),
+            Ok(r) if r.status().is_success() => {
+                let _ = r.bytes().await;
+                return Ok(());
+            }
             Ok(r) => {
+                let status = r.status();
+                let _ = r.bytes().await;
                 tracing::error!(
                     "Chunk upload failed at offset {} with status: {} (attempt {}/{})",
                     offset,
-                    r.status(),
+                    status,
                     attempt + 1,
                     MAX_RETRIES
                 );
@@ -411,7 +425,7 @@ async fn stream_and_upload_chunks(
         }
         chunk_data.truncate(bytes_read);
 
-        upload_chunk_with_retry(client, upload_id, offset, chunk_data).await?;
+        upload_chunk_with_retry(client, upload_id, offset, bytes::Bytes::from(chunk_data)).await?;
 
         offset += bytes_read as u64;
         let mut state = upload_state.write();
@@ -456,7 +470,7 @@ async fn stream_and_upload_chunks(
         let uint8_array = Uint8Array::new(&array_buffer);
         let chunk_data = uint8_array.to_vec();
 
-        upload_chunk_with_retry(client, upload_id, offset, chunk_data).await?;
+        upload_chunk_with_retry(client, upload_id, offset, bytes::Bytes::from(chunk_data)).await?;
 
         offset += (end - offset) as u64;
         let mut state = upload_state.write();
@@ -496,7 +510,9 @@ async fn upload_chunked(
         })?;
 
     if !resp.status().is_success() {
-        tracing::error!("Init upload failed with status: {}", resp.status());
+        let status = resp.status();
+        let _ = resp.bytes().await;
+        tracing::error!("Init upload failed with status: {}", status);
         return Err(());
     }
 
@@ -523,10 +539,13 @@ async fn upload_chunked(
         })?;
 
     if !resp.status().is_success() {
-        tracing::error!("Finalize upload failed with status: {}", resp.status());
+        let status = resp.status();
+        let _ = resp.bytes().await;
+        tracing::error!("Finalize upload failed with status: {}", status);
         return Err(());
     }
 
+    let _ = resp.bytes().await;
     Ok(())
 }
 
@@ -566,7 +585,7 @@ pub async fn put_file(
             if active_count.load(Ordering::Relaxed) < max_concurrent {
                 break;
             }
-            async_sleep(Duration::from_millis(500)).await;
+            async_sleep(Duration::from_millis(50)).await;
         }
 
         let file = files[i].clone();
