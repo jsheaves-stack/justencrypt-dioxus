@@ -103,6 +103,7 @@ fn App() -> Element {
         rename_modal: None,
         delete_modal: None,
         photo_viewer_modal: None,
+        details_modal: None,
         needs_refetch: false,
     };
 

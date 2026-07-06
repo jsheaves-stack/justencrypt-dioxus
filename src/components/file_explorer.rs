@@ -3,6 +3,7 @@ use crate::{
         create_file_modal::CreateFileModal,
         create_folder_modal::CreateFolderModal,
         delete_modal::DeleteModal,
+        details_modal::DetailsModal,
         edit_file_modal::EditFileModal,
         file::File,
         folder::Folder,
@@ -76,8 +77,15 @@ pub const EDITABLE_FORMATS: [&str; 50] = [
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct FolderItem {
     pub is_file: bool,
+    #[serde(default)]
     pub file_extension: Option<String>,
     pub file_name: String,
+    #[serde(default)]
+    pub file_size: Option<i64>,
+    #[serde(default)]
+    pub created_date: Option<String>,
+    #[serde(default)]
+    pub last_modified_date: Option<String>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -86,6 +94,8 @@ pub enum SortCriteria {
     NameDesc,
     TypeAsc,
     TypeDesc,
+    SizeAsc,
+    SizeDesc,
 }
 
 impl FromStr for SortCriteria {
@@ -96,6 +106,8 @@ impl FromStr for SortCriteria {
             "NameDesc" => Ok(SortCriteria::NameDesc),
             "TypeAsc" => Ok(SortCriteria::TypeAsc),
             "TypeDesc" => Ok(SortCriteria::TypeDesc),
+            "SizeAsc" => Ok(SortCriteria::SizeAsc),
+            "SizeDesc" => Ok(SortCriteria::SizeDesc),
             _ => Err(()),
         }
     }
@@ -178,6 +190,25 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                     (false, true) => Ordering::Greater,
                     (true, false) => Ordering::Less,
                     _ => extension_comparison
+                        .reverse()
+                        .then(name_comparison.reverse()),
+                },
+                SortCriteria::SizeAsc => match (file_a.is_file, file_b.is_file) {
+                    (false, true) => Ordering::Less,
+                    (true, false) => Ordering::Greater,
+                    _ => file_a
+                        .file_size
+                        .unwrap_or(0)
+                        .cmp(&file_b.file_size.unwrap_or(0))
+                        .then(name_comparison),
+                },
+                SortCriteria::SizeDesc => match (file_a.is_file, file_b.is_file) {
+                    (false, true) => Ordering::Greater,
+                    (true, false) => Ordering::Less,
+                    _ => file_a
+                        .file_size
+                        .unwrap_or(0)
+                        .cmp(&file_b.file_size.unwrap_or(0))
                         .reverse()
                         .then(name_comparison.reverse()),
                 },
@@ -274,6 +305,8 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                         option { value: "TypeDesc", "Type (Z-A)" }
                         option { value: "NameAsc", "Name (A-Z)" }
                         option { value: "NameDesc", "Name (Z-A)" }
+                        option { value: "SizeAsc", "Size (Smallest)" }
+                        option { value: "SizeDesc", "Size (Largest)" }
                     }
                     Button {
                         class: "w-full sm:w-auto",
@@ -372,6 +405,10 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
 
             if let Some((file_name, file_path)) = app_state.read().photo_viewer_modal.clone() {
                 PhotoViewerModal { file_name, current_path: file_path }
+            }
+
+            if let Some((item, file_path)) = app_state.read().details_modal.clone() {
+                DetailsModal { item, current_path: file_path }
             }
 
             div { class: "flex flex-row flex-wrap h-min w-full px-4 py-4 gap-4 auto-rows-max",

@@ -1,6 +1,7 @@
 pub mod create_file_modal;
 pub mod create_folder_modal;
 pub mod delete_modal;
+pub mod details_modal;
 pub mod edit_file_modal;
 pub mod file;
 pub mod file_explorer;

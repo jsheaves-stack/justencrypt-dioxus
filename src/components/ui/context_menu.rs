@@ -79,6 +79,8 @@ pub fn ContextMenu() -> Element {
                         let delete_path = path.clone();
                         let download_file_name = file.file_name.clone();
                         let download_path = path.clone();
+                        let details_file = file.clone();
+                        let details_path = path.clone();
 
                         rsx! {
                             div { class: "py-1 flex flex-col",
@@ -130,6 +132,10 @@ pub fn ContextMenu() -> Element {
                                 ContextMenuItem {
                                     label: "Details",
                                     onclick: move |_| {
+                                        app_state.write().details_modal = Some((
+                                            details_file.clone(),
+                                            details_path.clone(),
+                                        ));
                                         context_menu.write().target = ContextMenuTarget::None;
                                     },
                                 }
@@ -143,6 +149,8 @@ pub fn ContextMenu() -> Element {
                         let rename_path = path.clone();
                         let delete_folder_name = folder.file_name.clone();
                         let delete_path = path.clone();
+                        let details_folder = folder.clone();
+                        let details_path = path.clone();
                         rsx! {
                             div { class: "py-1 flex flex-col",
                                 ContextMenuItem {
@@ -175,6 +183,16 @@ pub fn ContextMenu() -> Element {
                                             delete_folder_name.clone(),
                                             delete_path.clone(),
                                             false,
+                                        ));
+                                        context_menu.write().target = ContextMenuTarget::None;
+                                    },
+                                }
+                                ContextMenuItem {
+                                    label: "Details",
+                                    onclick: move |_| {
+                                        app_state.write().details_modal = Some((
+                                            details_folder.clone(),
+                                            details_path.clone(),
                                         ));
                                         context_menu.write().target = ContextMenuTarget::None;
                                     },
