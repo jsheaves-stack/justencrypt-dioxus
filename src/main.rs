@@ -32,9 +32,18 @@ pub fn api_url() -> &'static str {
     API_URL.get_or_init(|| {
         #[cfg(target_arch = "wasm32")]
         {
-            option_env!("API_URL")
-                .unwrap_or("http://localhost:8000")
-                .to_string()
+            let mut url = None;
+            if let Some(win) = web_sys::window() {
+                if let Ok(val) = js_sys::Reflect::get(&win, &wasm_bindgen::JsValue::from_str("API_URL")) {
+                    if let Some(s) = val.as_string() {
+                        if !s.is_empty() {
+                            url = Some(s);
+                        }
+                    }
+                }
+            }
+            url.or_else(|| option_env!("API_URL").map(|s| s.to_string()))
+                .unwrap_or_else(|| "http://localhost:8000".to_string())
         }
         #[cfg(not(target_arch = "wasm32"))]
         {

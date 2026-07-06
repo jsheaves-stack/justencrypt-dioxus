@@ -27,7 +27,7 @@ Before building or developing, ensure you have the following installed:
 2. [Node.js & npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) (for Tailwind CSS)
 3. [Dioxus CLI](https://dioxuslabs.com/learn/0.6/getting_started):
    ```bash
-   cargo install dioxus-cli --version 0.7.3
+   cargo install --locked dioxus-cli --version 0.7.3
    ```
 4. WebAssembly target (if building for web):
    ```bash
