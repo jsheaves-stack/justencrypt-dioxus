@@ -1,10 +1,7 @@
 use dioxus::prelude::*;
 
 use crate::{
-    components::{
-        file_explorer::FolderItem,
-        ui::button::Button,
-    },
+    components::{file_explorer::FolderItem, ui::button::Button},
     AppState,
 };
 
@@ -18,7 +15,11 @@ fn format_file_size(size_opt: Option<i64>) -> String {
             } else if size < 1024 * 1024 * 1024 {
                 format!("{:.2} MB ({} bytes)", size as f64 / (1024.0 * 1024.0), size)
             } else {
-                format!("{:.2} GB ({} bytes)", size as f64 / (1024.0 * 1024.0 * 1024.0), size)
+                format!(
+                    "{:.2} GB ({} bytes)",
+                    size as f64 / (1024.0 * 1024.0 * 1024.0),
+                    size
+                )
             }
         }
         _ => "-".to_string(),
@@ -59,11 +60,7 @@ pub fn DetailsModal(item: FolderItem, current_path: Vec<String>) -> Element {
         format!("/{}", current_path.join("/"))
     };
 
-    let size_str = if item.is_file {
-        format_file_size(item.file_size)
-    } else {
-        "-".to_string()
-    };
+    let size_str = format_file_size(item.file_size);
 
     let created_str = if item.is_file {
         format_date(item.created_date.as_deref())
