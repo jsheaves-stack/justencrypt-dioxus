@@ -307,15 +307,21 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         Vec::new()
     };
 
-    let file_count = if let Some(files) = sorted_files.read().as_ref() {
-        files.iter().filter(|f| f.is_file()).count() as i64
+    let (file_count, folder_count) = if let Some(files) = sorted_files.read().as_ref() {
+        let mut total_files = 0;
+        let mut total_folders = 0;
+        for item in files {
+            match item {
+                FolderContent::File(_) => total_files += 1,
+                FolderContent::Folder(f) => {
+                    total_folders += 1 + f.folder_count;
+                    total_files += f.file_count;
+                }
+            }
+        }
+        (total_files, total_folders)
     } else {
-        0
-    };
-    let folder_count = if let Some(files) = sorted_files.read().as_ref() {
-        files.iter().filter(|f| !f.is_file()).count() as i64
-    } else {
-        0
+        (0, 0)
     };
     let folder_size = sorted_files
         .read()
