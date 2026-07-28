@@ -1,7 +1,7 @@
 use crate::{
     api_url,
     components::{
-        file_explorer::{FolderItem, IMAGE_FORMATS, VIDEO_FORMATS},
+        file_explorer::{IMAGE_FORMATS, VIDEO_FORMATS},
         ui::{
             card::{Card, CardContent, CardFooter},
             context_menu::{ContextMenuState, ContextMenuTarget},
@@ -9,12 +9,13 @@ use crate::{
             label::Label,
         },
     },
+    models::{File as ModelFile, FolderContent},
     AppState,
 };
 use dioxus::prelude::*;
 
 #[component]
-pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
+pub fn File(file: ModelFile, current_path: Vec<String>) -> Element {
     let mut context_menu = use_context::<Signal<ContextMenuState>>();
     let mut app_state = use_context::<Signal<AppState>>();
 
@@ -53,6 +54,7 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
     };
 
     let display_name = file.file_name.clone();
+    let display_ext = file.file_extension.as_deref().unwrap_or("FILE").to_string();
 
     rsx! {
         div {
@@ -63,8 +65,8 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
                 let coords = e.client_coordinates();
                 tracing::debug!("File right-clicked at {}, {}", coords.x, coords.y);
                 let mut state = context_menu.write();
-                state.target = ContextMenuTarget::File(
-                    file_clone.clone(),
+                state.target = ContextMenuTarget::Item(
+                    FolderContent::File(file_clone.clone()),
                     current_path_clone.clone(),
                 );
                 state.position = (coords.x, coords.y);
@@ -83,7 +85,7 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
                     if is_image {
                         Image {
                             class: "object-contain w-min h-full align-center",
-                            src: "{thumbnail_url}",
+                            src: thumbnail_url,
                         }
                     } else if is_video {
                         div { class: "flex flex-col items-center justify-center w-3/4 h-3/4 bg-secondary/20 rounded-xl border-2 border-border text-muted-foreground shadow-inner",
@@ -114,7 +116,7 @@ pub fn File(file: FolderItem, current_path: Vec<String>) -> Element {
                         }
                     } else {
                         div { class: "flex items-center justify-center w-3/4 h-3/4 bg-secondary/20 rounded-xl border-2 border-border text-muted-foreground font-bold text-3xl uppercase tracking-wider shadow-inner",
-                            "{file.file_extension.as_deref().unwrap_or(\"FILE\")}"
+                            {display_ext}
                         }
                     }
                 }

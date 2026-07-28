@@ -1,9 +1,11 @@
 #![allow(non_snake_case)]
 
 mod components;
+mod models;
 mod requests;
 pub mod state;
 
+pub use models::*;
 pub use state::*;
 
 use components::{
@@ -34,7 +36,9 @@ pub fn api_url() -> &'static str {
         {
             let mut url = None;
             if let Some(win) = web_sys::window() {
-                if let Ok(val) = js_sys::Reflect::get(&win, &wasm_bindgen::JsValue::from_str("API_URL")) {
+                if let Ok(val) =
+                    js_sys::Reflect::get(&win, &wasm_bindgen::JsValue::from_str("API_URL"))
+                {
                     if let Some(s) = val.as_string() {
                         if !s.is_empty() {
                             url = Some(s);

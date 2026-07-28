@@ -66,7 +66,7 @@ pub fn EditFileModal(file_name: String, current_path: Vec<String>) -> Element {
                             onmounted: move |e| async move {
                                 let _ = e.set_focus(true).await;
                             },
-                            value: "{content}",
+                            value: content.clone(),
                             oninput: move |e| {
                                 file_content.set(Some(e.value()));
                             },

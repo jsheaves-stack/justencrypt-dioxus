@@ -21,7 +21,7 @@ pub fn Spinner(props: SpinnerProps) -> Element {
             stroke_width: "2",
             stroke_linecap: "round",
             stroke_linejoin: "round",
-            class: "{final_class}",
+            class: final_class,
             path { d: "M21 12a9 9 0 1 1-6.219-8.56" }
         }
     }

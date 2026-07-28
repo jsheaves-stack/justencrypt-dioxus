@@ -66,7 +66,7 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
                         }
                     }
                     if let Some(err) = error_msg.read().as_ref() {
-                        span { class: "text-sm text-destructive", "{err}" }
+                        span { class: "text-sm text-destructive", {err.clone()} }
                     }
                 }
 

@@ -55,11 +55,11 @@ pub fn DeleteModal(name: String, current_path: Vec<String>, is_file: bool) -> El
                         "Are you sure you want to permanently delete the "
                         {if is_file_clone { "file" } else { "folder" }}
                         " '"
-                        span { class: "font-semibold", "{name}" }
+                        span { class: "font-semibold", {name} }
                         "'? This action cannot be undone."
                     }
                     if let Some(err) = error_msg.read().as_ref() {
-                        span { class: "text-sm text-destructive", "{err}" }
+                        span { class: "text-sm text-destructive", {err.clone()} }
                     }
                 }
 

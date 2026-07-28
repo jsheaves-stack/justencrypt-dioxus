@@ -39,7 +39,7 @@ pub struct AppState {
     pub rename_modal: Option<(String, Vec<String>, bool)>,
     pub delete_modal: Option<(String, Vec<String>, bool)>,
     pub photo_viewer_modal: Option<(String, Vec<String>)>,
-    pub details_modal: Option<(crate::components::file_explorer::FolderItem, Vec<String>)>,
+    pub details_modal: Option<(crate::models::FolderContent, Vec<String>)>,
     pub needs_refetch: bool,
 }
 

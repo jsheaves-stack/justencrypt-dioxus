@@ -118,7 +118,7 @@ pub fn Button(props: ButtonProps) -> Element {
 
     rsx! {
         button {
-            class: "{final_class}",
+            class: final_class,
             r#type: "{props.r#type}",
             disabled: is_disabled,
             autofocus: props.autofocus,

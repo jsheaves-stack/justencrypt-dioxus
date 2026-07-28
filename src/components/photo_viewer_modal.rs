@@ -38,8 +38,8 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
         let mut media = Vec::new();
         if let Some(Ok(files)) = &*folder_contents_data.read() {
             for file in files {
-                if file.is_file {
-                    if let Some(ext) = &file.file_extension {
+                if file.is_file() {
+                    if let Some(ext) = &file.file_extension() {
                         if IMAGE_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f))
                             || VIDEO_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f))
                         {
@@ -66,7 +66,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
         let files = media_files.read();
         let current_index = files
             .iter()
-            .position(|f| f.file_name == active_file_name)
+            .position(|f| f.file_name() == active_file_name)
             .unwrap_or(0);
         let current_file = files.get(current_index).cloned();
 
@@ -77,7 +77,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
     };
 
     let is_video = current_file.as_ref().is_some_and(|f| {
-        if let Some(ext) = &f.file_extension {
+        if let Some(ext) = &f.file_extension() {
             return VIDEO_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f));
         }
         false
@@ -90,11 +90,11 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
     };
 
     let image_url = current_file.as_ref().map_or(String::new(), |f| {
-        format!("{}/file/{}{}", api_url(), path_str, f.file_name)
+        format!("{}/file/{}{}", api_url(), path_str, f.file_name())
     });
 
     let thumbnail_url = current_file.as_ref().map_or(String::new(), |f| {
-        format!("{}/thumbnail/{}{}", api_url(), path_str, f.file_name)
+        format!("{}/thumbnail/{}{}", api_url(), path_str, f.file_name())
     });
 
     let image_url_for_resource = image_url.clone();
@@ -226,7 +226,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
 
     let current_file_name_display = current_file
         .as_ref()
-        .map(|f| f.file_name.clone())
+        .map(|f| f.file_name().to_string())
         .unwrap_or_else(|| active_file_name.clone());
 
     rsx! {
@@ -243,12 +243,12 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                     let current_idx = files
 
                         .iter()
-                        .position(|f| f.file_name == current_name)
+                        .position(|f| f.file_name() == current_name)
                         .unwrap_or(0);
                     match e.key().to_string().as_str() {
                         "ArrowRight" => {
                             if current_idx + 1 < files.len() {
-                                let next_name = files[current_idx + 1].file_name.clone();
+                                let next_name = files[current_idx + 1].file_name().to_string();
                                 drop(state);
                                 scale.set(1.0);
                                 offset_x.set(0.0);
@@ -258,7 +258,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                         }
                         "ArrowLeft" => {
                             if current_idx > 0 {
-                                let prev_name = files[current_idx - 1].file_name.clone();
+                                let prev_name = files[current_idx - 1].file_name().to_string();
                                 drop(state);
                                 scale.set(1.0);
                                 offset_x.set(0.0);
@@ -278,7 +278,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
             // Header bar
             div { class: "absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-[10000] bg-gradient-to-b from-black/80 to-transparent",
                 h2 { class: "text-white text-lg font-semibold drop-shadow-md",
-                    "{current_file_name_display}"
+                    {current_file_name_display.clone()}
                 }
                 div { class: "flex items-center gap-4",
                     if is_loading_full {
@@ -339,10 +339,10 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                             let files = media_files.read();
                             let current_idx = files
                                 .iter()
-                                .position(|f| f.file_name == current_name)
+                                .position(|f| f.file_name() == current_name)
                                 .unwrap_or(0);
                             if current_idx > 0 {
-                                let prev_name = files[current_idx - 1].file_name.clone();
+                                let prev_name = files[current_idx - 1].file_name().to_string();
                                 drop(state);
                                 scale.set(1.0);
                                 offset_x.set(0.0);
@@ -366,10 +366,10 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                             let files = media_files.read();
                             let current_idx = files
                                 .iter()
-                                .position(|f| f.file_name == current_name)
+                                .position(|f| f.file_name() == current_name)
                                 .unwrap_or(0);
                             if current_idx + 1 < files.len() {
-                                let next_name = files[current_idx + 1].file_name.clone();
+                                let next_name = files[current_idx + 1].file_name().to_string();
                                 drop(state);
                                 scale.set(1.0);
                                 offset_x.set(0.0);
@@ -392,7 +392,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                 if is_video {
                     video {
                         class: "max-w-full max-h-full outline-none",
-                        src: "{image_url}",
+                        src: image_url,
                         controls: true,
                         autoplay: true,
                         crossorigin: "use-credentials",
@@ -403,9 +403,9 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                 } else if let Some(url) = display_url {
                     img {
                         class: "max-w-full max-h-full object-contain cursor-grab active:cursor-grabbing select-none",
-                        style: "{transform_style}",
-                        src: "{url}",
-                        alt: "{current_file_name_display}",
+                        style: transform_style,
+                        src: url,
+                        alt: current_file_name_display.clone(),
                         draggable: "false",
                         crossorigin: "use-credentials",
                         onclick: move |e| {

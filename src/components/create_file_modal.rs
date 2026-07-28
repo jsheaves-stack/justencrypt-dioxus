@@ -72,7 +72,7 @@ pub fn CreateFileModal(current_path: Vec<String>) -> Element {
                         },
                         for ext in EDITABLE_FORMATS.iter() {
                             option {
-                                value: "{ext}",
+                                value: *ext,
                                 selected: *ext == file_extension.read().as_str(),
                                 "{ext.to_lowercase()}"
                             }
@@ -81,7 +81,7 @@ pub fn CreateFileModal(current_path: Vec<String>) -> Element {
                 }
 
                 if let Some(err) = error_msg.read().as_ref() {
-                    span { class: "text-sm text-destructive mb-2", "{err}" }
+                    span { class: "text-sm text-destructive mb-2", {err.clone()} }
                 }
 
                 div { class: "flex-grow flex flex-col min-h-0",

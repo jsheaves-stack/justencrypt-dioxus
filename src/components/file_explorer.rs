@@ -5,22 +5,25 @@ use crate::{
         delete_modal::DeleteModal,
         details_modal::DetailsModal,
         edit_file_modal::EditFileModal,
-        file::File,
-        folder::Folder,
+        file::File as FileComponent,
+        folder::Folder as FolderComponent,
         photo_viewer_modal::PhotoViewerModal,
         rename_modal::RenameModal,
-        ui::{button::Button, header::Header, spinner::Spinner},
+        ui::{
+            button::{Button, ButtonVariant},
+            header::Header,
+            spinner::Spinner,
+        },
     },
+    models::FolderContent,
     requests::{file::put_file, folder::get_folder},
     ReqwestClient, Route,
 };
 use dioxus::prelude::*;
-use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, str::FromStr};
 
 pub const IMAGE_FORMATS: [&str; 8] = ["APNG", "AVIF", "GIF", "JPG", "JPEG", "PNG", "SVG", "WebP"];
 pub const VIDEO_FORMATS: [&str; 6] = ["MP4", "WEBM", "OGG", "MOV", "AVI", "MKV"];
-
 pub const EDITABLE_FORMATS: [&str; 50] = [
     "TXT",
     "MD",
@@ -73,20 +76,6 @@ pub const EDITABLE_FORMATS: [&str; 50] = [
     "NFO",
     "ME",
 ];
-
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct FolderItem {
-    pub is_file: bool,
-    #[serde(default)]
-    pub file_extension: Option<String>,
-    pub file_name: String,
-    #[serde(default)]
-    pub file_size: Option<i64>,
-    #[serde(default)]
-    pub created_date: Option<String>,
-    #[serde(default)]
-    pub last_modified_date: Option<String>,
-}
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum SortCriteria {
@@ -167,48 +156,48 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         }
 
         if !*show_hidden.read() {
-            files.retain(|f| !f.file_name.starts_with('.'));
+            files.retain(|f| !f.file_name().starts_with('.'));
         }
 
         files.sort_by(|file_a, file_b| {
             let name_comparison = file_a
-                .file_name
+                .file_name()
                 .chars()
                 .map(|c| c.to_ascii_lowercase())
-                .cmp(file_b.file_name.chars().map(|c| c.to_ascii_lowercase()));
-            let extension_comparison = file_a.file_extension.cmp(&file_b.file_extension);
+                .cmp(file_b.file_name().chars().map(|c| c.to_ascii_lowercase()));
+            let extension_comparison = file_a.file_extension().cmp(&file_b.file_extension());
 
             match *sort_criteria.read() {
                 SortCriteria::NameAsc => name_comparison,
                 SortCriteria::NameDesc => name_comparison.reverse(),
-                SortCriteria::TypeAsc => match (file_a.is_file, file_b.is_file) {
+                SortCriteria::TypeAsc => match (file_a.is_file(), file_b.is_file()) {
                     (false, true) => Ordering::Less,
                     (true, false) => Ordering::Greater,
                     _ => extension_comparison.then(name_comparison),
                 },
-                SortCriteria::TypeDesc => match (file_a.is_file, file_b.is_file) {
+                SortCriteria::TypeDesc => match (file_a.is_file(), file_b.is_file()) {
                     (false, true) => Ordering::Greater,
                     (true, false) => Ordering::Less,
                     _ => extension_comparison
                         .reverse()
                         .then(name_comparison.reverse()),
                 },
-                SortCriteria::SizeAsc => match (file_a.is_file, file_b.is_file) {
+                SortCriteria::SizeAsc => match (file_a.is_file(), file_b.is_file()) {
                     (false, true) => Ordering::Less,
                     (true, false) => Ordering::Greater,
                     _ => file_a
-                        .file_size
+                        .file_size()
                         .unwrap_or(0)
-                        .cmp(&file_b.file_size.unwrap_or(0))
+                        .cmp(&file_b.file_size().unwrap_or(0))
                         .then(name_comparison),
                 },
-                SortCriteria::SizeDesc => match (file_a.is_file, file_b.is_file) {
+                SortCriteria::SizeDesc => match (file_a.is_file(), file_b.is_file()) {
                     (false, true) => Ordering::Greater,
                     (true, false) => Ordering::Less,
                     _ => file_a
-                        .file_size
+                        .file_size()
                         .unwrap_or(0)
-                        .cmp(&file_b.file_size.unwrap_or(0))
+                        .cmp(&file_b.file_size().unwrap_or(0))
                         .reverse()
                         .then(name_comparison.reverse()),
                 },
@@ -233,18 +222,15 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                 files
                     .iter()
                     .take(*display_count.read())
-                    .map(|file| {
+                    .map(|item| {
                         rsx! {
-                            if file.is_file {
-                                File {
-                                    file: file.clone(),
-                                    current_path: path.clone(),
-                                }
-                            } else {
-                                Folder {
-                                    file: file.clone(),
-                                    current_path: path.clone(),
-                                }
+                            match item {
+                                FolderContent::File(file) => rsx! {
+                                    FileComponent { file: file.clone(), current_path: path.clone() }
+                                },
+                                FolderContent::Folder(folder) => rsx! {
+                                    FolderComponent { file: folder.clone(), current_path: path.clone() }
+                                },
                             }
                         }
                     })
@@ -294,6 +280,18 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                     }
                 }
                 div { class: "flex flex-wrap items-center gap-2 justify-start md:justify-end w-full md:w-auto",
+                    Button {
+                        variant: ButtonVariant::Outline,
+                        class: "w-full sm:w-auto",
+                        onclick: move |_| {
+                            show_hidden.toggle();
+                        },
+                        if *show_hidden.read() {
+                            "Hide Hidden"
+                        } else {
+                            "Show Hidden"
+                        }
+                    }
                     select {
                         class: "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full sm:w-auto",
                         onchange: move |e| {

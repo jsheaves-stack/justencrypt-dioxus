@@ -1,7 +1,8 @@
 use dioxus::prelude::*;
 
 use crate::{
-    components::{file_explorer::FolderItem, ui::button::Button},
+    components::ui::button::Button,
+    models::{File, Folder, FolderContent},
     AppState,
 };
 
@@ -31,7 +32,7 @@ fn format_date(date_opt: Option<&str>) -> String {
         Some(s) if !s.is_empty() => {
             let s = s.replace('T', " ");
             let s = s.trim_end_matches('Z');
-            let main_part = s.split('.').next().unwrap_or(&s);
+            let main_part = s.split('.').next().unwrap_or(s);
             format!("{} UTC", main_part)
         }
         _ => "-".to_string(),
@@ -39,39 +40,64 @@ fn format_date(date_opt: Option<&str>) -> String {
 }
 
 #[component]
-pub fn DetailsModal(item: FolderItem, current_path: Vec<String>) -> Element {
+pub fn DetailsModal(item: FolderContent, current_path: Vec<String>) -> Element {
     let mut app_state = use_context::<Signal<AppState>>();
 
-    let item_type = if item.is_file {
-        format!(
-            "File ({})",
-            item.file_extension
-                .as_deref()
-                .unwrap_or("Unknown")
-                .to_uppercase()
-        )
-    } else {
-        "File Folder".to_string()
+    let (item_type, name, size_str, created_str, modified_str, contains) = match &item {
+        FolderContent::File(File {
+            file_name,
+            file_extension,
+            file_size,
+            created_date,
+            last_modified_date,
+        }) => {
+            let item_type = format!(
+                "File ({})",
+                file_extension
+                    .as_deref()
+                    .unwrap_or("Unknown")
+                    .to_uppercase()
+            );
+            let size_str = format_file_size(*file_size);
+            let created_str = format_date(created_date.as_deref());
+            let modified_str = format_date(last_modified_date.as_deref());
+            (
+                item_type,
+                file_name.clone(),
+                size_str,
+                created_str,
+                modified_str,
+                None,
+            )
+        }
+        FolderContent::Folder(Folder {
+            file_name,
+            file_size,
+            created_date,
+            last_modified_date,
+            file_count,
+            folder_count,
+        }) => {
+            let item_type = "File Folder".to_string();
+            let size_str = format_file_size(*file_size);
+            let created_str = format_date(created_date.as_deref());
+            let modified_str = format_date(last_modified_date.as_deref());
+            let contains = Some(format!("{} files, {} folders", file_count, folder_count));
+            (
+                item_type,
+                file_name.clone(),
+                size_str,
+                created_str,
+                modified_str,
+                contains,
+            )
+        }
     };
 
     let location = if current_path.is_empty() {
         "/".to_string()
     } else {
         format!("/{}", current_path.join("/"))
-    };
-
-    let size_str = format_file_size(item.file_size);
-
-    let created_str = if item.is_file {
-        format_date(item.created_date.as_deref())
-    } else {
-        "-".to_string()
-    };
-
-    let modified_str = if item.is_file {
-        format_date(item.last_modified_date.as_deref())
-    } else {
-        "-".to_string()
     };
 
     rsx! {
@@ -87,7 +113,7 @@ pub fn DetailsModal(item: FolderItem, current_path: Vec<String>) -> Element {
                 app_state.write().details_modal = None;
             },
             div {
-                class: "relative flex w-full max-w-[500px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
+                class: "relative flex w-fit min-w-[400px] max-w-[500px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
                 onclick: move |e| e.stop_propagation(),
                 div { class: "flex justify-between items-center mb-6 pb-2 border-b border-border",
                     h2 { class: "text-xl font-semibold flex items-center gap-2", "Properties" }
@@ -103,29 +129,35 @@ pub fn DetailsModal(item: FolderItem, current_path: Vec<String>) -> Element {
                 div { class: "flex flex-col gap-3 my-2 text-sm",
                     div { class: "grid grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
                         span { class: "font-medium text-muted-foreground", "Name:" }
-                        span { class: "font-semibold break-all text-foreground", "{item.file_name}" }
+                        span { class: "font-semibold break-all text-foreground", {name} }
                     }
                     div { class: "grid grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
                         span { class: "font-medium text-muted-foreground", "Type:" }
-                        span { class: "text-foreground", "{item_type}" }
+                        span { class: "text-foreground", {item_type} }
                     }
                     div { class: "grid grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
                         span { class: "font-medium text-muted-foreground", "Location:" }
                         span { class: "font-mono text-xs text-foreground break-all",
-                            "{location}"
+                            {location}
                         }
                     }
                     div { class: "grid grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
                         span { class: "font-medium text-muted-foreground", "Size:" }
-                        span { class: "text-foreground", "{size_str}" }
+                        span { class: "text-foreground", {size_str} }
+                    }
+                    if let Some(contains_str) = contains {
+                        div { class: "grid grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
+                            span { class: "font-medium text-muted-foreground", "Contains:" }
+                            span { class: "text-foreground", {contains_str} }
+                        }
                     }
                     div { class: "grid grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
                         span { class: "font-medium text-muted-foreground", "Created:" }
-                        span { class: "text-foreground", "{created_str}" }
+                        span { class: "text-foreground", {created_str} }
                     }
                     div { class: "grid grid-cols-[110px,1fr] gap-2 items-baseline py-1.5",
                         span { class: "font-medium text-muted-foreground", "Modified:" }
-                        span { class: "text-foreground", "{modified_str}" }
+                        span { class: "text-foreground", {modified_str} }
                     }
                 }
 

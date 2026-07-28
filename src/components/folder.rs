@@ -1,20 +1,18 @@
 use dioxus::prelude::*;
 
 use crate::{
-    components::{
-        file_explorer::FolderItem,
-        ui::{
-            card::{Card, CardContent, CardFooter},
-            context_menu::{ContextMenuState, ContextMenuTarget},
-        },
+    components::ui::{
+        card::{Card, CardContent, CardFooter},
+        context_menu::{ContextMenuState, ContextMenuTarget},
     },
+    models::{Folder as ModelFolder, FolderContent},
     Route,
 };
 
 static FOLDER_ICO: Asset = asset!("/assets/icons/folder-filled.svg");
 
 #[component]
-pub fn Folder(file: FolderItem, current_path: Vec<String>) -> Element {
+pub fn Folder(file: ModelFolder, current_path: Vec<String>) -> Element {
     let router = router();
     let new_file = file.clone();
 
@@ -31,8 +29,8 @@ pub fn Folder(file: FolderItem, current_path: Vec<String>) -> Element {
                 let coords = e.client_coordinates();
                 tracing::debug!("Folder right-clicked at {}, {}", coords.x, coords.y);
                 let mut state = context_menu.write();
-                state.target = ContextMenuTarget::Folder(
-                    file_clone.clone(),
+                state.target = ContextMenuTarget::Item(
+                    FolderContent::Folder(file_clone.clone()),
                     current_path_clone.clone(),
                 );
                 state.position = (coords.x, coords.y);

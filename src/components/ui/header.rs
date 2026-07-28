@@ -49,7 +49,7 @@ pub fn Header() -> Element {
 
                     nav { class: "flex items-center gap-4 text-sm font-medium lg:gap-6",
                         for (text , to) in menu_entries.clone() {
-                            Link { key: "{text}", to, "{text}" }
+                            Link { key: "{text}", to, {text} }
                         }
                     }
                 }
@@ -182,7 +182,7 @@ pub fn Header() -> Element {
                                 key: "{text}",
                                 to,
                                 onclick: move |_| is_menu_open.set(false),
-                                "{text}"
+                                {text}
                             }
                         }
                     }

@@ -1,5 +1,5 @@
 use super::RequestBuilderExt;
-use crate::{api_url, components::file_explorer::FolderItem, ReqwestClient};
+use crate::{api_url, models::FolderContent, ReqwestClient};
 use dioxus::signals::Signal;
 
 pub async fn put_folder(
@@ -77,7 +77,7 @@ pub async fn delete_folder(
 pub async fn get_folder(
     reqwest_client_context: Signal<ReqwestClient>,
     current_path: Vec<String>,
-) -> Result<Vec<FolderItem>, ()> {
+) -> Result<Vec<FolderContent>, ()> {
     let folder_url = format!("{}/folder/{}", api_url(), current_path.join("/"));
     tracing::debug!("Fetching folder contents from {}", folder_url);
 
@@ -93,9 +93,10 @@ pub async fn get_folder(
             let response_string = r.text().await.map_err(|e| {
                 tracing::error!("Failed to read folder response text: {}", e);
             })?;
-            let folders: Vec<FolderItem> = serde_json::from_str(&response_string).map_err(|e| {
-                tracing::error!("Failed to parse folder JSON: {}", e);
-            })?;
+            let folders: Vec<FolderContent> =
+                serde_json::from_str(&response_string).map_err(|e| {
+                    tracing::error!("Failed to parse folder JSON: {}", e);
+                })?;
             tracing::debug!("Successfully fetched folder contents");
             Ok(folders)
         }
