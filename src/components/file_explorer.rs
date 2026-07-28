@@ -11,11 +11,12 @@ use crate::{
         rename_modal::RenameModal,
         ui::{
             button::{Button, ButtonVariant},
+            context_menu::{ContextMenuState, ContextMenuTarget},
             header::Header,
             spinner::Spinner,
         },
     },
-    models::FolderContent,
+    models::{Folder, FolderContent},
     requests::{file::put_file, folder::get_folder},
     ReqwestClient, Route,
 };
@@ -106,6 +107,7 @@ impl FromStr for SortCriteria {
 pub fn FileExplorer(path: Vec<String>) -> Element {
     let router = router();
     let mut app_state = use_context::<Signal<crate::AppState>>();
+    let mut context_menu = use_context::<Signal<ContextMenuState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
     let upload_state = use_context::<Signal<crate::UploadState>>();
     let create_folder_modal_state = app_state.read().create_folder_modal;
@@ -135,21 +137,41 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
     use_effect(use_reactive!(|_path_for_reset| {
         display_count.set(50);
         let _ = document::eval("document.getElementById('file-explorer-main').scrollTop = 0;");
-        
+
         let mut state = app_state.write();
-        if state.photo_viewer_modal.as_ref().is_some_and(|(_, p)| p != &_path_for_reset) {
+        if state
+            .photo_viewer_modal
+            .as_ref()
+            .is_some_and(|(_, p)| p != &_path_for_reset)
+        {
             state.photo_viewer_modal = None;
         }
-        if state.edit_file_modal.as_ref().is_some_and(|(_, p)| p != &_path_for_reset) {
+        if state
+            .edit_file_modal
+            .as_ref()
+            .is_some_and(|(_, p)| p != &_path_for_reset)
+        {
             state.edit_file_modal = None;
         }
-        if state.rename_modal.as_ref().is_some_and(|(_, p, _)| p != &_path_for_reset) {
+        if state
+            .rename_modal
+            .as_ref()
+            .is_some_and(|(_, p, _)| p != &_path_for_reset)
+        {
             state.rename_modal = None;
         }
-        if state.delete_modal.as_ref().is_some_and(|(_, p, _)| p != &_path_for_reset) {
+        if state
+            .delete_modal
+            .as_ref()
+            .is_some_and(|(_, p, _)| p != &_path_for_reset)
+        {
             state.delete_modal = None;
         }
-        if state.details_modal.as_ref().is_some_and(|(_, p)| p != &_path_for_reset) {
+        if state
+            .details_modal
+            .as_ref()
+            .is_some_and(|(_, p)| p != &_path_for_reset)
+        {
             state.details_modal = None;
         }
     }));
@@ -260,6 +282,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
     };
 
     let path_clone_back = path.clone();
+    let path_clone_ctx = path.clone();
 
     let media_files_list = if let Some(files) = sorted_files.read().as_ref() {
         files
@@ -284,12 +307,51 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         Vec::new()
     };
 
+    let file_count = if let Some(files) = sorted_files.read().as_ref() {
+        files.iter().filter(|f| f.is_file()).count() as i64
+    } else {
+        0
+    };
+    let folder_count = if let Some(files) = sorted_files.read().as_ref() {
+        files.iter().filter(|f| !f.is_file()).count() as i64
+    } else {
+        0
+    };
+
     rsx! {
         div {
             id: "file-explorer-main",
             class: "w-full h-full bg-background text-foreground overflow-scroll focus:outline-none",
             tabindex: "0",
             autofocus: true,
+            oncontextmenu: move |evt| {
+                evt.prevent_default();
+                evt.stop_propagation();
+                let coords = evt.client_coordinates();
+                let mut state = context_menu.write();
+                let current_folder_name = path_clone_ctx
+                    .last()
+                    .cloned()
+                    .unwrap_or_else(|| "/".to_string());
+                let parent_path = if path_clone_ctx.is_empty() {
+                    vec![]
+                } else {
+                    path_clone_ctx[..path_clone_ctx.len() - 1].to_vec()
+                };
+                let folder = Folder {
+                    file_name: current_folder_name,
+                    file_size: None,
+                    created_date: None,
+                    last_modified_date: None,
+                    file_count,
+                    folder_count,
+                };
+                state.target = ContextMenuTarget::Item(
+                    FolderContent::Folder(folder),
+                    parent_path,
+                );
+                state.position = (coords.x, coords.y);
+            },
             onkeydown: move |evt| {
                 if evt.key().to_string() == "." {
                     show_hidden.toggle();
@@ -442,7 +504,11 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
             }
 
             if let Some((file_name, file_path)) = app_state.read().photo_viewer_modal.clone() {
-                PhotoViewerModal { file_name, current_path: file_path, media_files: media_files_list.clone() }
+                PhotoViewerModal {
+                    file_name,
+                    current_path: file_path,
+                    media_files: media_files_list.clone(),
+                }
             }
 
             if let Some((item, file_path)) = app_state.read().details_modal.clone() {

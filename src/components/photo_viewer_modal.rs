@@ -49,7 +49,7 @@ pub fn PhotoViewerModal(
     };
 
     let is_video = current_file.as_ref().is_some_and(|f| {
-        if let Some(ext) = f.split('.').last() {
+        if let Some(ext) = f.split('.').next_back() {
             return VIDEO_FORMATS
                 .iter()
                 .any(|fmt| ext.eq_ignore_ascii_case(fmt));
@@ -217,11 +217,8 @@ pub fn PhotoViewerModal(
                 let state = app_state.read();
                 if let Some((current_name, path)) = state.photo_viewer_modal.clone() {
                     let files = &media_files_keydown;
-                    let current_idx = files
 
-                        .iter()
-                        .position(|f| f == &current_name)
-                        .unwrap_or(0);
+                    let current_idx = files.iter().position(|f| f == &current_name).unwrap_or(0);
                     match e.key().to_string().as_str() {
                         "ArrowRight" => {
                             if current_idx + 1 < files.len() {
@@ -314,10 +311,7 @@ pub fn PhotoViewerModal(
                         let state = app_state.read();
                         if let Some((current_name, path)) = state.photo_viewer_modal.clone() {
                             let files = &media_files_prev;
-                            let current_idx = files
-                                .iter()
-                                .position(|f| f == &current_name)
-                                .unwrap_or(0);
+                            let current_idx = files.iter().position(|f| f == &current_name).unwrap_or(0);
                             if current_idx > 0 {
                                 let prev_name = files[current_idx - 1].clone();
                                 drop(state);
@@ -341,10 +335,7 @@ pub fn PhotoViewerModal(
                         let state = app_state.read();
                         if let Some((current_name, path)) = state.photo_viewer_modal.clone() {
                             let files = &media_files_next;
-                            let current_idx = files
-                                .iter()
-                                .position(|f| f == &current_name)
-                                .unwrap_or(0);
+                            let current_idx = files.iter().position(|f| f == &current_name).unwrap_or(0);
                             if current_idx + 1 < files.len() {
                                 let next_name = files[current_idx + 1].clone();
                                 drop(state);
