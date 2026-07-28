@@ -135,6 +135,23 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
     use_effect(use_reactive!(|_path_for_reset| {
         display_count.set(50);
         let _ = document::eval("document.getElementById('file-explorer-main').scrollTop = 0;");
+        
+        let mut state = app_state.write();
+        if state.photo_viewer_modal.as_ref().is_some_and(|(_, p)| p != &_path_for_reset) {
+            state.photo_viewer_modal = None;
+        }
+        if state.edit_file_modal.as_ref().is_some_and(|(_, p)| p != &_path_for_reset) {
+            state.edit_file_modal = None;
+        }
+        if state.rename_modal.as_ref().is_some_and(|(_, p, _)| p != &_path_for_reset) {
+            state.rename_modal = None;
+        }
+        if state.delete_modal.as_ref().is_some_and(|(_, p, _)| p != &_path_for_reset) {
+            state.delete_modal = None;
+        }
+        if state.details_modal.as_ref().is_some_and(|(_, p)| p != &_path_for_reset) {
+            state.details_modal = None;
+        }
     }));
 
     use_effect(move || {
