@@ -244,6 +244,29 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
 
     let path_clone_back = path.clone();
 
+    let media_files_list = if let Some(files) = sorted_files.read().as_ref() {
+        files
+            .iter()
+            .filter(|f| f.is_file())
+            .filter_map(|f| {
+                if let Some(ext) = f.file_extension() {
+                    if IMAGE_FORMATS
+                        .iter()
+                        .any(|fmt| ext.eq_ignore_ascii_case(fmt))
+                        || VIDEO_FORMATS
+                            .iter()
+                            .any(|fmt| ext.eq_ignore_ascii_case(fmt))
+                    {
+                        return Some(f.file_name().to_string());
+                    }
+                }
+                None
+            })
+            .collect::<Vec<String>>()
+    } else {
+        Vec::new()
+    };
+
     rsx! {
         div {
             id: "file-explorer-main",
@@ -402,7 +425,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
             }
 
             if let Some((file_name, file_path)) = app_state.read().photo_viewer_modal.clone() {
-                PhotoViewerModal { file_name, current_path: file_path }
+                PhotoViewerModal { file_name, current_path: file_path, media_files: media_files_list.clone() }
             }
 
             if let Some((item, file_path)) = app_state.read().details_modal.clone() {

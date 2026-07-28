@@ -2,18 +2,19 @@ use dioxus::prelude::*;
 
 use crate::{
     api_url,
-    components::{
-        file_explorer::{IMAGE_FORMATS, VIDEO_FORMATS},
-        ui::spinner::Spinner,
-    },
-    requests::{folder::get_folder, RequestBuilderExt},
+    components::{file_explorer::VIDEO_FORMATS, ui::spinner::Spinner},
+    requests::RequestBuilderExt,
     AppState, ReqwestClient,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use base64::engine::{general_purpose, Engine};
 
 #[component]
-pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element {
+pub fn PhotoViewerModal(
+    file_name: String,
+    current_path: Vec<String>,
+    media_files: Vec<String>,
+) -> Element {
     let mut app_state = use_context::<Signal<AppState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
 
@@ -22,35 +23,6 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
     let mut offset_y = use_signal(|| 0.0f64);
     let mut is_dragging = use_signal(|| false);
     let mut drag_start = use_signal(|| (0.0f64, 0.0f64));
-
-    // Fetch folder contents once when modal is opened
-    let current_path_for_resource = current_path.clone();
-    let folder_contents_data = use_resource(use_reactive!(|(
-        current_path_for_resource,
-        reqwest_client_context,
-    )| {
-        let path_clone = current_path_for_resource.clone();
-        let client = reqwest_client_context;
-        async move { get_folder(client, path_clone).await }
-    }));
-
-    let media_files = use_memo(move || {
-        let mut media = Vec::new();
-        if let Some(Ok(files)) = &*folder_contents_data.read() {
-            for file in files {
-                if file.is_file() {
-                    if let Some(ext) = &file.file_extension() {
-                        if IMAGE_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f))
-                            || VIDEO_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f))
-                        {
-                            media.push(file.clone());
-                        }
-                    }
-                }
-            }
-        }
-        media
-    });
 
     // We read the actual current file name from the global state to avoid any stale closure captures
     // during fast clicking. If it's missing, fallback to the prop.
@@ -63,10 +35,10 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
     };
 
     let (current_file, has_next, has_prev) = {
-        let files = media_files.read();
+        let files = &media_files;
         let current_index = files
             .iter()
-            .position(|f| f.file_name() == active_file_name)
+            .position(|f| f == &active_file_name)
             .unwrap_or(0);
         let current_file = files.get(current_index).cloned();
 
@@ -77,8 +49,10 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
     };
 
     let is_video = current_file.as_ref().is_some_and(|f| {
-        if let Some(ext) = &f.file_extension() {
-            return VIDEO_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f));
+        if let Some(ext) = f.split('.').last() {
+            return VIDEO_FORMATS
+                .iter()
+                .any(|fmt| ext.eq_ignore_ascii_case(fmt));
         }
         false
     });
@@ -90,11 +64,11 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
     };
 
     let image_url = current_file.as_ref().map_or(String::new(), |f| {
-        format!("{}/file/{}{}", api_url(), path_str, f.file_name())
+        format!("{}/file/{}{}", api_url(), path_str, f)
     });
 
     let thumbnail_url = current_file.as_ref().map_or(String::new(), |f| {
-        format!("{}/thumbnail/{}{}", api_url(), path_str, f.file_name())
+        format!("{}/thumbnail/{}{}", api_url(), path_str, f)
     });
 
     let image_url_for_resource = image_url.clone();
@@ -225,9 +199,12 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
     };
 
     let current_file_name_display = current_file
-        .as_ref()
-        .map(|f| f.file_name().to_string())
+        .clone()
         .unwrap_or_else(|| active_file_name.clone());
+
+    let media_files_keydown = media_files.clone();
+    let media_files_prev = media_files.clone();
+    let media_files_next = media_files.clone();
 
     rsx! {
         div {
@@ -239,16 +216,16 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
             onkeydown: move |e| {
                 let state = app_state.read();
                 if let Some((current_name, path)) = state.photo_viewer_modal.clone() {
-                    let files = media_files.read();
+                    let files = &media_files_keydown;
                     let current_idx = files
 
                         .iter()
-                        .position(|f| f.file_name() == current_name)
+                        .position(|f| f == &current_name)
                         .unwrap_or(0);
                     match e.key().to_string().as_str() {
                         "ArrowRight" => {
                             if current_idx + 1 < files.len() {
-                                let next_name = files[current_idx + 1].file_name().to_string();
+                                let next_name = files[current_idx + 1].clone();
                                 drop(state);
                                 scale.set(1.0);
                                 offset_x.set(0.0);
@@ -258,7 +235,7 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                         }
                         "ArrowLeft" => {
                             if current_idx > 0 {
-                                let prev_name = files[current_idx - 1].file_name().to_string();
+                                let prev_name = files[current_idx - 1].clone();
                                 drop(state);
                                 scale.set(1.0);
                                 offset_x.set(0.0);
@@ -336,13 +313,13 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                         e.stop_propagation();
                         let state = app_state.read();
                         if let Some((current_name, path)) = state.photo_viewer_modal.clone() {
-                            let files = media_files.read();
+                            let files = &media_files_prev;
                             let current_idx = files
                                 .iter()
-                                .position(|f| f.file_name() == current_name)
+                                .position(|f| f == &current_name)
                                 .unwrap_or(0);
                             if current_idx > 0 {
-                                let prev_name = files[current_idx - 1].file_name().to_string();
+                                let prev_name = files[current_idx - 1].clone();
                                 drop(state);
                                 scale.set(1.0);
                                 offset_x.set(0.0);
@@ -363,13 +340,13 @@ pub fn PhotoViewerModal(file_name: String, current_path: Vec<String>) -> Element
                         e.stop_propagation();
                         let state = app_state.read();
                         if let Some((current_name, path)) = state.photo_viewer_modal.clone() {
-                            let files = media_files.read();
+                            let files = &media_files_next;
                             let current_idx = files
                                 .iter()
-                                .position(|f| f.file_name() == current_name)
+                                .position(|f| f == &current_name)
                                 .unwrap_or(0);
                             if current_idx + 1 < files.len() {
-                                let next_name = files[current_idx + 1].file_name().to_string();
+                                let next_name = files[current_idx + 1].clone();
                                 drop(state);
                                 scale.set(1.0);
                                 offset_x.set(0.0);
