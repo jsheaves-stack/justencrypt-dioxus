@@ -317,6 +317,10 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
     } else {
         0
     };
+    let folder_size = sorted_files
+        .read()
+        .as_ref()
+        .map(|files| files.iter().filter_map(|f| f.file_size()).sum::<i64>());
 
     rsx! {
         div {
@@ -340,7 +344,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                 };
                 let folder = Folder {
                     file_name: current_folder_name,
-                    file_size: None,
+                    file_size: folder_size,
                     created_date: None,
                     last_modified_date: None,
                     file_count,
