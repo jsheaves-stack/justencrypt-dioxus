@@ -121,9 +121,7 @@ pub fn Button(props: ButtonProps) -> Element {
 
     if let Some(label_for) = props.label_for {
         rsx! {
-            label {
-                class: final_class,
-                r#for: "{label_for}",
+            label { class: final_class, r#for: label_for,
                 if props.loading {
                     LoaderIcon {}
                 }
