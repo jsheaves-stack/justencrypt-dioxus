@@ -23,6 +23,8 @@ pub fn Login() -> Element {
     let router: RouterContext = router();
     let mut is_loading = use_signal(|| false);
     let mut show_password = use_signal(|| false);
+    let mut username = use_signal(String::new);
+    let mut password = use_signal(String::new);
 
     let onsubmit = move |event: FormEvent| async move {
         event.prevent_default();
@@ -67,6 +69,8 @@ pub fn Login() -> Element {
                                     id: "username",
                                     required: true,
                                     autocomplete: "on",
+                                    value: Some(username.read().clone()),
+                                    oninput: move |e: FormEvent| username.set(e.value()),
                                 }
                             }
                             div {
@@ -80,10 +84,12 @@ pub fn Login() -> Element {
                                         id: "password",
                                         required: true,
                                         autocomplete: "on",
+                                        value: Some(password.read().clone()),
+                                        oninput: move |e: FormEvent| password.set(e.value()),
                                     }
                                     button {
                                         r#type: "button",
-                                        class: "absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors",
+                                        class: "absolute right-1 top-1/2 -translate-y-1/2 p-2 text-muted-foreground hover:text-foreground transition-colors",
                                         onclick: move |_| {
                                             let current = *show_password.read();
                                             show_password.set(!current);
