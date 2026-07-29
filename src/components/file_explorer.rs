@@ -455,11 +455,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                                 });
                             },
                         }
-                        Button { class: "w-full sm:w-auto", "Upload Files" }
-                        label {
-                            class: "absolute inset-0 cursor-pointer opacity-0",
-                            r#for: "file-upload",
-                        }
+                        Button { class: "w-full sm:w-auto cursor-pointer", label_for: "file-upload".to_string(), "Upload Files" }
                     }
                     div { class: "relative w-full sm:w-auto",
                         input {
@@ -484,11 +480,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                                 });
                             },
                         }
-                        Button { class: "w-full sm:w-auto", "Upload Folder" }
-                        label {
-                            class: "absolute inset-0 cursor-pointer opacity-0",
-                            r#for: "folder-upload",
-                        }
+                        Button { class: "w-full sm:w-auto cursor-pointer", label_for: "folder-upload".to_string(), "Upload Folder" }
                     }
                 }
             }

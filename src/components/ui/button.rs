@@ -66,6 +66,9 @@ pub struct ButtonProps {
     #[props(default)]
     pub onclick: EventHandler<MouseEvent>,
 
+    #[props(default)]
+    pub label_for: Option<String>,
+
     pub children: Element,
 }
 
@@ -116,23 +119,36 @@ pub fn Button(props: ButtonProps) -> Element {
 
     let is_disabled = props.disabled || props.loading;
 
-    rsx! {
-        button {
-            class: final_class,
-            r#type: "{props.r#type}",
-            disabled: is_disabled,
-            autofocus: props.autofocus,
-            onclick: move |evt| {
-                if !is_disabled {
-                    props.onclick.call(evt);
+    if let Some(label_for) = props.label_for {
+        rsx! {
+            label {
+                class: final_class,
+                r#for: "{label_for}",
+                if props.loading {
+                    LoaderIcon {}
                 }
-            },
-
-            if props.loading {
-                LoaderIcon {}
+                {props.children}
             }
+        }
+    } else {
+        rsx! {
+            button {
+                class: final_class,
+                r#type: "{props.r#type}",
+                disabled: is_disabled,
+                autofocus: props.autofocus,
+                onclick: move |evt| {
+                    if !is_disabled {
+                        props.onclick.call(evt);
+                    }
+                },
 
-            {props.children}
+                if props.loading {
+                    LoaderIcon {}
+                }
+
+                {props.children}
+            }
         }
     }
 }
