@@ -208,7 +208,7 @@ pub fn PhotoViewerModal(
 
     rsx! {
         div {
-            class: "fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md focus:outline-none",
+            class: "fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md focus:outline-none animate-in fade-in duration-200",
             tabindex: "0",
             onmounted: move |e| async move {
                 let _ = e.set_focus(true).await;
@@ -251,7 +251,7 @@ pub fn PhotoViewerModal(
 
             // Header bar
             div { class: "absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-[10000] bg-gradient-to-b from-black/80 to-transparent",
-                h2 { class: "text-white text-lg font-semibold drop-shadow-md",
+                h2 { class: "text-white text-lg font-semibold drop-shadow-md truncate max-w-[50%] md:max-w-[70%]",
                     {current_file_name_display.clone()}
                 }
                 div { class: "flex items-center gap-4",
@@ -305,7 +305,7 @@ pub fn PhotoViewerModal(
             // Previous button
             if has_prev {
                 button {
-                    class: "absolute left-6 top-1/2 -translate-y-1/2 w-16 h-16 flex items-center justify-center text-3xl pb-1 bg-black/50 hover:bg-white/30 rounded-full text-white z-[10000] backdrop-blur-md transition-all border border-white/10 hover:scale-110",
+                    class: "absolute left-2 md:left-6 top-1/2 -translate-y-1/2 w-10 h-10 md:w-16 md:h-16 flex items-center justify-center text-2xl md:text-3xl pb-1 bg-black/50 hover:bg-white/30 rounded-full text-white z-[10000] backdrop-blur-md transition-all border border-white/10 hover:scale-110",
                     onclick: move |e| {
                         e.stop_propagation();
                         let state = app_state.read();
@@ -329,7 +329,7 @@ pub fn PhotoViewerModal(
             // Next button
             if has_next {
                 button {
-                    class: "absolute right-6 top-1/2 -translate-y-1/2 w-16 h-16 flex items-center justify-center text-3xl pb-1 pl-1 bg-black/50 hover:bg-white/30 rounded-full text-white z-[10000] backdrop-blur-md transition-all border border-white/10 hover:scale-110",
+                    class: "absolute right-2 md:right-6 top-1/2 -translate-y-1/2 w-10 h-10 md:w-16 md:h-16 flex items-center justify-center text-2xl md:text-3xl pb-1 pl-1 bg-black/50 hover:bg-white/30 rounded-full text-white z-[10000] backdrop-blur-md transition-all border border-white/10 hover:scale-110",
                     onclick: move |e| {
                         e.stop_propagation();
                         let state = app_state.read();

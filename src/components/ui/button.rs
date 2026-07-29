@@ -89,15 +89,15 @@ fn LoaderIcon() -> Element {
 
 #[component]
 pub fn Button(props: ButtonProps) -> Element {
-    let base_styles = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50";
+    let base_styles = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95 duration-200";
 
     let variant_styles = match props.variant {
-        ButtonVariant::Default => "bg-primary text-primary-foreground hover:opacity-90",
-        ButtonVariant::Destructive => "bg-destructive text-destructive-foreground hover:opacity-90",
+        ButtonVariant::Default => "bg-blue-700/80 text-blue-50 hover:bg-blue-700 shadow-sm hover:shadow-[0_0_12px_rgba(29,78,216,0.3)] border border-blue-600/30",
+        ButtonVariant::Destructive => "bg-destructive text-destructive-foreground hover:opacity-90 shadow-sm",
         ButtonVariant::Outline => {
-            "border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+            "border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-sm"
         }
-        ButtonVariant::Secondary => "bg-secondary text-secondary-foreground hover:opacity-80",
+        ButtonVariant::Secondary => "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm",
         ButtonVariant::Ghost => "hover:bg-accent hover:text-accent-foreground",
         ButtonVariant::Link => "text-primary underline-offset-4 hover:underline",
     };

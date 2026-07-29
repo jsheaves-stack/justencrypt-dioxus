@@ -35,7 +35,7 @@ pub fn UploadModal() -> Element {
     });
 
     rsx! {
-        div { class: "fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 w-auto sm:w-[650px] max-w-full bg-card border border-border rounded-lg shadow-xl z-[100] flex flex-col overflow-hidden",
+        div { class: "fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-6 sm:right-6 w-auto sm:w-[650px] max-w-full bg-card border border-border rounded-lg shadow-xl z-[100] flex flex-col overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-200",
             div { class: "bg-muted px-4 py-3 flex justify-between items-center border-b border-border shadow-sm",
                 div { class: "flex items-center gap-4",
                     span { class: "font-medium text-sm text-foreground",

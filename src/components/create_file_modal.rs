@@ -24,7 +24,7 @@ pub fn CreateFileModal(current_path: Vec<String>) -> Element {
 
     rsx! {
         div {
-            class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none p-4",
+            class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none p-4 animate-in fade-in duration-200",
             tabindex: "-1",
             onkeydown: move |e| {
                 if e.key().to_string() == "Escape" {
@@ -35,7 +35,7 @@ pub fn CreateFileModal(current_path: Vec<String>) -> Element {
                 app_state.write().create_file_modal = false;
             },
             div {
-                class: "relative flex w-full max-w-5xl max-h-[85vh] sm:h-5/6 flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg",
+                class: "relative flex w-full max-w-5xl max-h-[85vh] sm:h-5/6 flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg animate-in zoom-in-95 duration-200",
                 onclick: move |e| e.stop_propagation(),
                 div { class: "flex justify-between items-center mb-4",
                     h2 { class: "text-xl font-semibold", "Create New File" }

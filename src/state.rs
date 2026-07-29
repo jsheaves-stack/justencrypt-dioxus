@@ -43,5 +43,27 @@ pub struct AppState {
     pub needs_refetch: bool,
 }
 
+impl AppState {
+    pub fn is_any_modal_open(&self) -> bool {
+        self.create_folder_modal
+            || self.create_file_modal
+            || self.edit_file_modal.is_some()
+            || self.rename_modal.is_some()
+            || self.delete_modal.is_some()
+            || self.photo_viewer_modal.is_some()
+            || self.details_modal.is_some()
+    }
+
+    pub fn close_all_modals(&mut self) {
+        self.create_folder_modal = false;
+        self.create_file_modal = false;
+        self.edit_file_modal = None;
+        self.rename_modal = None;
+        self.delete_modal = None;
+        self.photo_viewer_modal = None;
+        self.details_modal = None;
+    }
+}
+
 #[derive(Clone)]
 pub struct ReqwestClient(pub Client);

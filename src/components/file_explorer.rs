@@ -391,7 +391,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                         span { "Back" }
                     }
                 }
-                div { class: "flex flex-wrap items-center gap-2 justify-start md:justify-end w-full md:w-auto",
+                div { class: "grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 justify-start sm:justify-end w-full md:w-auto",
                     Button {
                         variant: ButtonVariant::Outline,
                         class: "w-full sm:w-auto",
@@ -405,7 +405,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                         }
                     }
                     select {
-                        class: "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full sm:w-auto",
+                        class: "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-sm h-10 px-4 py-2 w-full sm:w-auto active:scale-95 duration-200 cursor-pointer appearance-none",
                         onchange: move |e| {
                             if let Ok(val) = e.value().parse::<SortCriteria>() {
                                 sort_criteria.set(val);
@@ -525,7 +525,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                 DetailsModal { item, current_path: file_path }
             }
 
-            div { class: "flex flex-row flex-wrap h-min w-full px-4 py-4 gap-4 auto-rows-max",
+            div { class: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 h-min w-full px-4 py-4 gap-4",
                 {folder_contents_for_display.into_iter()}
             }
         }

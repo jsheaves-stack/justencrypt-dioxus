@@ -56,8 +56,8 @@ pub fn ContextMenu() -> Element {
                 context_menu.write().target = ContextMenuTarget::None;
             },
             div {
-                class: "absolute bg-background text-foreground border border-border shadow-lg rounded-md min-w-[150px] z-[10000] overflow-hidden",
-                style: "left: {x}px; top: {y}px;",
+                class: "absolute bg-background text-foreground border border-border shadow-lg rounded-md min-w-[160px] z-[10000] overflow-hidden",
+                style: "left: min({x}px, calc(100vw - 170px)); top: min({y}px, calc(100vh - 220px));",
                 onmousedown: move |e| {
                     e.stop_propagation();
                 },

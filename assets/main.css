@@ -1,5 +1,13 @@
 body {
     background-color: #111216;
+    overscroll-behavior-y: none;
+}
+
+#file-explorer-main {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    scroll-behavior: smooth;
+    padding-bottom: 2rem;
 }
 
 #main {

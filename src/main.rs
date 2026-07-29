@@ -12,7 +12,7 @@ use components::{
     file_explorer::FileExplorer,
     home::Home,
     login_form::Login,
-    ui::{context_menu::ContextMenuState, upload_modal::UploadModal},
+    ui::{back_handler::BackHandler, context_menu::ContextMenuState, upload_modal::UploadModal},
 };
 use dioxus::prelude::*;
 use reqwest::Client;
@@ -108,7 +108,7 @@ fn App() -> Element {
     let client = Client::builder().build().unwrap();
 
     let app_state = AppState {
-        _theme: "light".to_string(),
+        _theme: "dark".to_string(),
         authenticated: false,
         create_folder_modal: false,
         create_file_modal: false,
@@ -121,18 +121,35 @@ fn App() -> Element {
     };
 
     use_context_provider(|| Signal::new(ReqwestClient(client)));
-    use_context_provider(|| Signal::new(app_state));
+    let mut app_state_sig = use_context_provider(|| Signal::new(app_state));
     use_context_provider(|| Signal::new(ContextMenuState::default()));
     use_context_provider(|| Signal::new(UploadState::default()));
+
+    use_effect(move || {
+        spawn(async move {
+            let mut eval = dioxus::document::eval(
+                r#"
+                let theme = window.localStorage.getItem('theme');
+                dioxus.send(theme ? theme : 'dark');
+            "#,
+            );
+            if let Ok(val) = eval.recv::<String>().await {
+                if val == "light" || val == "dark" {
+                    app_state_sig.write()._theme = val;
+                }
+            }
+        });
+    });
 
     rsx! {
         document::Stylesheet { href: TAILWIND_CSS }
         document::Stylesheet { href: MAIN_CSS }
         document::Link { rel: "icon", href: FAVICON_ICO }
 
-        div { class: "dark w-full h-full",
+        div { class: if app_state_sig.read()._theme == "dark" { "dark w-full h-full" } else { "w-full h-full" },
             Router::<Route> {}
             UploadModal {}
+            BackHandler {}
         }
     }
 }
