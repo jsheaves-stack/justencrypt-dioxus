@@ -2,7 +2,7 @@ use dioxus::prelude::*;
 
 use crate::{
     components::ui::button::{Button, ButtonVariant},
-    requests::file::patch_file,
+    requests::{file::patch_file, folder::patch_folder},
     AppState, ReqwestClient,
 };
 
@@ -25,11 +25,11 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
             tabindex: "-1",
             onkeydown: move |e| {
                 if e.key().to_string() == "Escape" {
-                    app_state.write().rename_modal = None;
+                    app_state.write().active_modal = None;
                 }
             },
             onclick: move |_| {
-                app_state.write().rename_modal = None;
+                app_state.write().active_modal = None;
             },
             div {
                 class: "relative flex w-full max-w-[400px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg animate-in zoom-in-95 duration-200",
@@ -42,7 +42,7 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
                     button {
                         class: "text-muted-foreground hover:text-foreground p-2",
                         onclick: move |_| {
-                            app_state.write().rename_modal = None;
+                            app_state.write().active_modal = None;
                         },
                         "✕"
                     }
@@ -74,7 +74,7 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
                     Button {
                         variant: ButtonVariant::Outline,
                         onclick: move |_| {
-                            app_state.write().rename_modal = None;
+                            app_state.write().active_modal = None;
                         },
                         "Cancel"
                     }
@@ -86,7 +86,7 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
                                 return;
                             }
                             if new_name_str == old_name_clone {
-                                app_state.write().rename_modal = None;
+                                app_state.write().active_modal = None;
                                 return;
                             }
 
@@ -99,7 +99,6 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
                                 if is_file_flag {
                                     let new_parent_path = current_path.join("/");
                                     match patch_file(
-                                            // API doesn't support folder rename yet based on the spec
                                             reqwest_client_context,
                                             current_path.clone(),
                                             old_name_str,
@@ -110,7 +109,7 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
                                     {
                                         Ok(_) => {
                                             is_saving.set(false);
-                                            app_state.write().rename_modal = None;
+                                            app_state.write().active_modal = None;
                                             app_state.write().needs_refetch = true;
                                         }
                                         Err(_) => {
@@ -119,11 +118,26 @@ pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -
                                         }
                                     }
                                 } else {
-                                    is_saving.set(false);
-                                    error_msg
-                                        .set(
-                                            Some("Folder renaming is not supported by API yet".to_string()),
-                                        );
+                                    let new_parent_path = current_path.join("/");
+                                    match patch_folder(
+                                            reqwest_client_context,
+                                            current_path.clone(),
+                                            old_name_str,
+                                            new_parent_path,
+                                            new_name_str,
+                                        )
+                                        .await
+                                    {
+                                        Ok(_) => {
+                                            is_saving.set(false);
+                                            app_state.write().active_modal = None;
+                                            app_state.write().needs_refetch = true;
+                                        }
+                                        Err(_) => {
+                                            is_saving.set(false);
+                                            error_msg.set(Some("Failed to rename folder".to_string()));
+                                        }
+                                    }
                                 }
                             });
                         },

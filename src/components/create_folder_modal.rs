@@ -19,11 +19,11 @@ pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
             tabindex: "-1",
             onkeydown: move |e| {
                 if e.key().to_string() == "Escape" {
-                    app_state.write().create_folder_modal = false;
+                    app_state.write().active_modal = None;
                 }
             },
             onclick: move |_| {
-                app_state.write().create_folder_modal = false;
+                app_state.write().active_modal = None;
             },
             div {
                 class: "relative flex w-full max-w-[400px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg animate-in zoom-in-95 duration-200",
@@ -33,7 +33,7 @@ pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
                     button {
                         class: "text-muted-foreground hover:text-foreground p-2",
                         onclick: move |_| {
-                            app_state.write().create_folder_modal = false;
+                            app_state.write().active_modal = None;
                         },
                         "✕"
                     }
@@ -62,7 +62,7 @@ pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
                     Button {
                         variant: ButtonVariant::Outline,
                         onclick: move |_| {
-                            app_state.write().create_folder_modal = false;
+                            app_state.write().active_modal = None;
                         },
                         "Cancel"
                     }
@@ -83,7 +83,7 @@ pub fn CreateFolderModal(current_path: Vec<String>) -> Element {
                                 {
                                     Ok(_) => {
                                         is_saving.set(false);
-                                        app_state.write().create_folder_modal = false;
+                                        app_state.write().active_modal = None;
                                         app_state.write().needs_refetch = true;
                                     }
                                     Err(_) => {

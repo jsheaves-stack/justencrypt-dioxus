@@ -141,10 +141,12 @@ pub fn File(
                         on_select.call((index, false, false));
                     } else if is_media {
                         e.stop_propagation();
-                        app_state.write().photo_viewer_modal = Some((
-                            display_name.clone(),
-                            current_path_clone_click.clone(),
-                        ));
+                        app_state.write().active_modal = Some(
+                            crate::AppModal::PhotoViewer(
+                                display_name.clone(),
+                                current_path_clone_click.clone(),
+                            ),
+                        );
                     }
                 },
                 CardContent { class: "p-4 flex flex-col justify-center items-center h-full w-full overflow-hidden",

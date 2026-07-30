@@ -106,11 +106,11 @@ pub fn DetailsModal(item: FolderContent, current_path: Vec<String>) -> Element {
             tabindex: "-1",
             onkeydown: move |e| {
                 if e.key().to_string() == "Escape" {
-                    app_state.write().details_modal = None;
+                    app_state.write().active_modal = None;
                 }
             },
             onclick: move |_| {
-                app_state.write().details_modal = None;
+                app_state.write().active_modal = None;
             },
             div {
                 class: "relative flex w-[90vw] max-w-[500px] sm:w-fit sm:min-w-[400px] flex-col rounded-lg border border-border bg-background p-4 sm:p-6 text-foreground shadow-lg animate-in zoom-in-95 duration-200",
@@ -120,7 +120,7 @@ pub fn DetailsModal(item: FolderContent, current_path: Vec<String>) -> Element {
                     button {
                         class: "text-muted-foreground hover:text-foreground p-2 transition-colors",
                         onclick: move |_| {
-                            app_state.write().details_modal = None;
+                            app_state.write().active_modal = None;
                         },
                         "✕"
                     }
@@ -164,7 +164,7 @@ pub fn DetailsModal(item: FolderContent, current_path: Vec<String>) -> Element {
                 div { class: "flex justify-end mt-6 pt-3 border-t border-border",
                     Button {
                         onclick: move |_| {
-                            app_state.write().details_modal = None;
+                            app_state.write().active_modal = None;
                         },
                         "Close"
                     }

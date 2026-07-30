@@ -64,175 +64,155 @@ pub fn ContextMenu() -> Element {
                 match state.target {
 
                     ContextMenuTarget::Item(item, path) => {
-                        match item {
-                            FolderContent::File(file) => {
-                                let is_editable = file
-                                    .file_extension
-                                    .as_deref()
-                                    .map(|ext| {
-                                        EDITABLE_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f))
-                                    })
-                                    .unwrap_or(false);
-                                let edit_file_name = file.file_name.clone();
-                                let edit_path = path.clone();
-                                let rename_file_name = file.file_name.clone();
-                                let rename_path = path.clone();
-                                let delete_file_name = file.file_name.clone();
-                                let delete_path = path.clone();
-                                let move_file_name = file.file_name.clone();
-                                let move_path = path.clone();
-                                let download_file_name = file.file_name.clone();
-                                let download_path = path.clone();
-                                let details_item = FolderContent::File(file.clone());
-                                let details_path = path.clone();
-                                rsx! {
-                                    div { class: "py-1 flex flex-col",
+                        let name = item.file_name().to_string();
+                        let is_file = item.is_file();
+
+                        let rename_name = name.clone();
+                        let rename_path = path.clone();
+
+                        let delete_name = name.clone();
+                        let delete_path = path.clone();
+
+                        let move_name = name.clone();
+                        let move_path = path.clone();
+
+                        let details_item = item.clone();
+                        let details_path = path.clone();
+
+                        let is_root_folder = !is_file && path.is_empty() && name == "/";
+
+                        let is_editable = if let FolderContent::File(file) = &item {
+                            file.file_extension
+
+                                // --- Folder Specific ---
+
+                                // --- File Specific ---
+
+                                // --- Shared (Rename, Delete, Details) ---
+
+                                .as_deref()
+                                .map(|ext| {
+                                    EDITABLE_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f))
+                                })
+                                .unwrap_or(false)
+                        } else {
+                            false
+                        };
+                        rsx! {
+                            div { class: "py-1 flex flex-col",
+                                if !is_file && !is_root_folder {
+                                    ContextMenuItem {
+                                        label: "Open",
+                                        onclick: {
+                                            let open_name = name.clone();
+                                            let open_path = path.clone();
+                                            move |_| {
+                                                let mut new_path = open_path.clone();
+                                                new_path.push(open_name.clone());
+                                                router
+
+
+
+                                                    .push(Route::FileExplorer {
+                                                        path: new_path,
+                                                    });
+                                                context_menu.write().target = ContextMenuTarget::None;
+                                            }
+                                        },
+                                    }
+
+                                    if is_file {
                                         if is_editable {
                                             ContextMenuItem {
                                                 label: "Edit",
-                                                onclick: move |_| {
-                                                    app_state.write().edit_file_modal = Some((
-                                                        edit_file_name.clone(),
-                                                        edit_path.clone(),
-                                                    ));
-                                                    context_menu.write().target = ContextMenuTarget::None;
+                                                onclick: {
+                                                    let edit_name = name.clone();
+                                                    let edit_path = path.clone();
+                                                    move |_| {
+                                                        app_state.write().active_modal = Some(
+                                                            crate::AppModal::EditFile(edit_name.clone(), edit_path.clone()),
+                                                        );
+                                                        context_menu.write().target = ContextMenuTarget::None;
+                                                    }
                                                 },
                                             }
                                         }
+
                                         ContextMenuItem {
                                             label: "Download",
-                                            onclick: move |_| {
-                                                let file_name = download_file_name.clone();
-                                                let path = download_path.clone();
-                                                spawn(async move {
-                                                    let _ = download_file(reqwest_client_context, path, file_name).await;
-                                                });
-                                                context_menu.write().target = ContextMenuTarget::None;
-                                            },
-                                        }
-                                        ContextMenuItem {
-                                            label: "Rename",
-                                            onclick: move |_| {
-                                                app_state.write().rename_modal = Some((
-                                                    rename_file_name.clone(),
-                                                    rename_path.clone(),
-                                                    true,
-                                                ));
-                                                context_menu.write().target = ContextMenuTarget::None;
-                                            },
-                                        }
-                                        ContextMenuItem {
-                                            label: "Delete",
-                                            onclick: move |_| {
-                                                let mut state = app_state.write();
-                                                let mut items_to_delete = vec![];
-                                                if state.selected_files.contains(&(delete_file_name.clone(), true)) {
-                                                    items_to_delete = state.selected_files.iter().cloned().collect();
-                                                } else {
-                                                    state.selected_files.clear();
-                                                    items_to_delete.push((delete_file_name.clone(), true));
+                                            onclick: {
+                                                let dl_name = name.clone();
+                                                let dl_path = path.clone();
+                                                move |_| {
+                                                    let name_clone = dl_name.clone();
+                                                    let path_clone = dl_path.clone();
+                                                    spawn(async move {
+                                                        let _ = download_file(reqwest_client_context, path_clone, name_clone)
+                                                            .await;
+                                                    });
+                                                    context_menu.write().target = ContextMenuTarget::None;
                                                 }
-                                                state.delete_modal = Some((items_to_delete, delete_path.clone()));
-                                                context_menu.write().target = ContextMenuTarget::None;
-                                            },
-                                        }
-                                        ContextMenuItem {
-                                            label: "Move",
-                                            onclick: move |_| {
-                                                let mut state = app_state.write();
-                                                let mut files_to_move = vec![];
-                                                if state.selected_files.contains(&(move_file_name.clone(), true)) {
-                                                    files_to_move = state
-                                                        .selected_files
-                                                        .iter()
-                                                        .filter_map(|(name, is_file)| {
-                                                            if *is_file { Some(name.clone()) } else { None }
-                                                        })
-                                                        .collect();
-                                                } else {
-                                                    state.selected_files.clear();
-                                                    files_to_move.push(move_file_name.clone());
-                                                }
-                                                state.move_modal = Some((files_to_move, move_path.clone()));
-                                                context_menu.write().target = ContextMenuTarget::None;
-                                            },
-                                        }
-                                        ContextMenuItem {
-                                            label: "Details",
-                                            onclick: move |_| {
-                                                app_state.write().details_modal = Some((
-                                                    details_item.clone(),
-                                                    details_path.clone(),
-                                                ));
-                                                context_menu.write().target = ContextMenuTarget::None;
                                             },
                                         }
                                     }
                                 }
-                            }
-                            FolderContent::Folder(folder) => {
-                                let is_root = path.is_empty() && folder.file_name == "/";
-                                let open_folder_name = folder.file_name.clone();
-                                let open_path = path.clone();
-                                let rename_folder_name = folder.file_name.clone();
-                                let rename_path = path.clone();
-                                let delete_folder_name = folder.file_name.clone();
-                                let delete_path = path.clone();
-                                let details_item = FolderContent::Folder(folder.clone());
-                                let details_path = path.clone();
-                                rsx! {
-                                    div { class: "py-1 flex flex-col",
-                                        if !is_root {
-                                            ContextMenuItem {
-                                                label: "Open",
-                                                onclick: move |_| {
-                                                    let mut new_path = open_path.clone();
-                                                    new_path.push(open_folder_name.clone());
-                                                    router
-                                                        .push(Route::FileExplorer {
-                                                            path: new_path,
-                                                        });
-                                                    context_menu.write().target = ContextMenuTarget::None;
-                                                },
+
+                                if !is_root_folder {
+                                    ContextMenuItem {
+                                        label: "Move",
+                                        onclick: move |_| {
+                                            let mut state = app_state.write();
+                                            let mut items_to_move = vec![];
+                                            if state.selected_files.contains(&(move_name.clone(), is_file)) {
+                                                items_to_move = state.selected_files.iter().cloned().collect();
+                                            } else {
+                                                state.selected_files.clear();
+                                                items_to_move.push((move_name.clone(), is_file));
                                             }
-                                            ContextMenuItem {
-                                                label: "Rename",
-                                                onclick: move |_| {
-                                                    app_state.write().rename_modal = Some((
-                                                        rename_folder_name.clone(),
-                                                        rename_path.clone(),
-                                                        false,
-                                                    ));
-                                                    context_menu.write().target = ContextMenuTarget::None;
-                                                },
-                                            }
-                                            ContextMenuItem {
-                                                label: "Delete",
-                                                onclick: move |_| {
-                                                    let mut state = app_state.write();
-                                                    let mut items_to_delete = vec![];
-                                                    if state.selected_files.contains(&(delete_folder_name.clone(), false)) {
-                                                        items_to_delete = state.selected_files.iter().cloned().collect();
-                                                    } else {
-                                                        state.selected_files.clear();
-                                                        items_to_delete.push((delete_folder_name.clone(), false));
-                                                    }
-                                                    state.delete_modal = Some((items_to_delete, delete_path.clone()));
-                                                    context_menu.write().target = ContextMenuTarget::None;
-                                                },
-                                            }
-                                        }
-                                        ContextMenuItem {
-                                            label: "Details",
-                                            onclick: move |_| {
-                                                app_state.write().details_modal = Some((
-                                                    details_item.clone(),
-                                                    details_path.clone(),
-                                                ));
-                                                context_menu.write().target = ContextMenuTarget::None;
-                                            },
-                                        }
+                                            state.active_modal = Some(
+                                                crate::AppModal::Move(items_to_move, move_path.clone()),
+                                            );
+                                            context_menu.write().target = ContextMenuTarget::None;
+                                        },
                                     }
+
+                                    ContextMenuItem {
+                                        label: "Rename",
+                                        onclick: move |_| {
+                                            app_state.write().active_modal = Some(
+                                                crate::AppModal::Rename(rename_name.clone(), rename_path.clone(), is_file),
+                                            );
+                                            context_menu.write().target = ContextMenuTarget::None;
+                                        },
+                                    }
+
+                                    ContextMenuItem {
+                                        label: "Delete",
+                                        onclick: move |_| {
+                                            let mut state = app_state.write();
+                                            let mut items_to_delete = vec![];
+                                            if state.selected_files.contains(&(delete_name.clone(), is_file)) {
+                                                items_to_delete = state.selected_files.iter().cloned().collect();
+                                            } else {
+                                                state.selected_files.clear();
+                                                items_to_delete.push((delete_name.clone(), is_file));
+                                            }
+                                            state.active_modal = Some(
+                                                crate::AppModal::Delete((items_to_delete, delete_path.clone())),
+                                            );
+                                            context_menu.write().target = ContextMenuTarget::None;
+                                        },
+                                    }
+                                }
+
+                                ContextMenuItem {
+                                    label: "Details",
+                                    onclick: move |_| {
+                                        app_state.write().active_modal = Some(
+                                            crate::AppModal::Details(details_item.clone(), details_path.clone()),
+                                        );
+                                        context_menu.write().target = ContextMenuTarget::None;
+                                    },
                                 }
                             }
                         }

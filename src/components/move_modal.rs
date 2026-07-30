@@ -6,12 +6,15 @@ use crate::{
         spinner::Spinner,
     },
     models::FolderContent,
-    requests::{file::patch_file, folder::get_folder},
+    requests::{
+        file::patch_file,
+        folder::{get_folder, patch_folder},
+    },
     AppState, ReqwestClient,
 };
 
 #[component]
-pub fn MoveModal(files_to_move: Vec<String>, original_path: Vec<String>) -> Element {
+pub fn MoveModal(files_to_move: Vec<(String, bool)>, original_path: Vec<String>) -> Element {
     let mut app_state = use_context::<Signal<AppState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
 
@@ -67,12 +70,12 @@ pub fn MoveModal(files_to_move: Vec<String>, original_path: Vec<String>) -> Elem
             tabindex: "-1",
             onkeydown: move |e| {
                 if e.key().to_string() == "Escape" && !*is_moving.read() {
-                    app_state.write().move_modal = None;
+                    app_state.write().active_modal = None;
                 }
             },
             onclick: move |_| {
                 if !*is_moving.read() {
-                    app_state.write().move_modal = None;
+                    app_state.write().active_modal = None;
                 }
             },
             div {
@@ -84,7 +87,7 @@ pub fn MoveModal(files_to_move: Vec<String>, original_path: Vec<String>) -> Elem
                         class: "text-muted-foreground hover:text-foreground p-2",
                         onclick: move |_| {
                             if !*is_moving.read() {
-                                app_state.write().move_modal = None;
+                                app_state.write().active_modal = None;
                             }
                         },
                         "✕"
@@ -160,7 +163,7 @@ pub fn MoveModal(files_to_move: Vec<String>, original_path: Vec<String>) -> Elem
                         variant: ButtonVariant::Outline,
                         onclick: move |_| {
                             if !*is_moving.read() {
-                                app_state.write().move_modal = None;
+                                app_state.write().active_modal = None;
                             }
                         },
                         disabled: *is_moving.read(),
@@ -188,30 +191,48 @@ pub fn MoveModal(files_to_move: Vec<String>, original_path: Vec<String>) -> Elem
                             error_msg.set(None);
                             spawn(async move {
                                 let mut has_error = false;
-                                for file_name in files {
-                                    match patch_file(
-                                            reqwest_client_context,
-                                            orig_path.clone(),
-                                            file_name.clone(),
-                                            dest_path_str.clone(),
-                                            file_name.clone(),
-                                        )
-                                        .await
-                                    {
-                                        Ok(_) => {}
-                                        Err(_) => {
-                                            has_error = true;
-                                            break;
+                                for (item_name, is_file) in files {
+                                    if is_file {
+                                        match patch_file(
+                                                reqwest_client_context,
+                                                orig_path.clone(),
+                                                item_name.clone(),
+                                                dest_path_str.clone(),
+                                                item_name.clone(),
+                                            )
+                                            .await
+                                        {
+                                            Ok(_) => {}
+                                            Err(_) => {
+                                                has_error = true;
+                                                break;
+                                            }
+                                        }
+                                    } else {
+                                        match patch_folder(
+                                                reqwest_client_context,
+                                                orig_path.clone(),
+                                                item_name.clone(),
+                                                dest_path_str.clone(),
+                                                item_name.clone(),
+                                            )
+                                            .await
+                                        {
+                                            Ok(_) => {}
+                                            Err(_) => {
+                                                has_error = true;
+                                                break;
+                                            }
                                         }
                                     }
                                 }
                                 is_moving.set(false);
                                 if has_error {
-                                    error_msg.set(Some("Failed to move one or more files".to_string()));
+                                    error_msg.set(Some("Failed to move one or more items".to_string()));
                                 } else {
                                     let mut state = app_state.write();
                                     state.selected_files.clear();
-                                    state.move_modal = None;
+                                    state.active_modal = None;
                                     state.needs_refetch = true;
                                 }
                             });

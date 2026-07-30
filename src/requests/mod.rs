@@ -19,3 +19,18 @@ impl RequestBuilderExt for RequestBuilder {
         self
     }
 }
+
+pub fn build_url(endpoint: &str, current_path: &[String], item_name: Option<&str>) -> String {
+    let mut url = format!("{}/{}", crate::api_url(), endpoint);
+    if !current_path.is_empty() {
+        url.push('/');
+        url.push_str(&current_path.join("/"));
+    }
+    if let Some(name) = item_name {
+        if !name.is_empty() {
+            url.push('/');
+            url.push_str(name);
+        }
+    }
+    url
+}

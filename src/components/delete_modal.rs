@@ -52,12 +52,12 @@ pub fn DeleteModal(items: Vec<(String, bool)>, current_path: Vec<String>) -> Ele
             },
             onkeydown: move |e| {
                 if e.key().to_string() == "Escape" && !*is_deleting.read() {
-                    app_state.write().delete_modal = None;
+                    app_state.write().active_modal = None;
                 }
             },
             onclick: move |_| {
                 if !*is_deleting.read() {
-                    app_state.write().delete_modal = None;
+                    app_state.write().active_modal = None;
                 }
             },
             div {
@@ -70,7 +70,7 @@ pub fn DeleteModal(items: Vec<(String, bool)>, current_path: Vec<String>) -> Ele
                         disabled: is_deleting(),
                         onclick: move |_| {
                             if !*is_deleting.read() {
-                                app_state.write().delete_modal = None;
+                                app_state.write().active_modal = None;
                             }
                         },
                         "✕"
@@ -90,7 +90,7 @@ pub fn DeleteModal(items: Vec<(String, bool)>, current_path: Vec<String>) -> Ele
                         autofocus: true,
                         disabled: is_deleting(),
                         onclick: move |_| {
-                            app_state.write().delete_modal = None;
+                            app_state.write().active_modal = None;
                         },
                         "Cancel"
                     }
@@ -142,7 +142,7 @@ pub fn DeleteModal(items: Vec<(String, bool)>, current_path: Vec<String>) -> Ele
                                         );
                                 } else {
                                     app_state.write().selected_files.clear();
-                                    app_state.write().delete_modal = None;
+                                    app_state.write().active_modal = None;
                                     app_state.write().needs_refetch = true;
                                 }
                             });

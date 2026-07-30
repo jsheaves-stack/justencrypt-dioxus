@@ -27,7 +27,7 @@ pub fn PhotoViewerModal(
     // We read the actual current file name from the global state to avoid any stale closure captures
     // during fast clicking. If it's missing, fallback to the prop.
     let active_file_name = {
-        if let Some((name, _)) = &app_state.read().photo_viewer_modal {
+        if let Some(crate::AppModal::PhotoViewer(name, _)) = &app_state.read().active_modal {
             name.clone()
         } else {
             file_name.clone()
@@ -215,9 +215,12 @@ pub fn PhotoViewerModal(
             },
             onkeydown: move |e| {
                 let state = app_state.read();
-                if let Some((current_name, path)) = state.photo_viewer_modal.clone() {
-                    let files = &media_files_keydown;
+                if let Some(crate::AppModal::PhotoViewer(current_name, path)) = state
 
+                    .active_modal
+                    .clone()
+                {
+                    let files = &media_files_keydown;
                     let current_idx = files.iter().position(|f| f == &current_name).unwrap_or(0);
                     match e.key().to_string().as_str() {
                         "ArrowRight" => {
@@ -227,7 +230,9 @@ pub fn PhotoViewerModal(
                                 scale.set(1.0);
                                 offset_x.set(0.0);
                                 offset_y.set(0.0);
-                                app_state.write().photo_viewer_modal = Some((next_name, path));
+                                app_state.write().active_modal = Some(
+                                    crate::AppModal::PhotoViewer(next_name, path),
+                                );
                             }
                         }
                         "ArrowLeft" => {
@@ -237,12 +242,14 @@ pub fn PhotoViewerModal(
                                 scale.set(1.0);
                                 offset_x.set(0.0);
                                 offset_y.set(0.0);
-                                app_state.write().photo_viewer_modal = Some((prev_name, path));
+                                app_state.write().active_modal = Some(
+                                    crate::AppModal::PhotoViewer(prev_name, path),
+                                );
                             }
                         }
                         "Escape" => {
                             drop(state);
-                            app_state.write().photo_viewer_modal = None;
+                            app_state.write().active_modal = None;
                         }
                         _ => {}
                     }
@@ -295,7 +302,7 @@ pub fn PhotoViewerModal(
                     button {
                         class: "text-white/80 hover:text-white p-2 text-2xl font-bold bg-black/60 rounded-lg hover:bg-red-500/80 backdrop-blur-md transition-colors",
                         onclick: move |_| {
-                            app_state.write().photo_viewer_modal = None;
+                            app_state.write().active_modal = None;
                         },
                         "✕"
                     }
@@ -309,7 +316,10 @@ pub fn PhotoViewerModal(
                     onclick: move |e| {
                         e.stop_propagation();
                         let state = app_state.read();
-                        if let Some((current_name, path)) = state.photo_viewer_modal.clone() {
+                        if let Some(crate::AppModal::PhotoViewer(current_name, path)) = state
+                            .active_modal
+                            .clone()
+                        {
                             let files = &media_files_prev;
                             let current_idx = files.iter().position(|f| f == &current_name).unwrap_or(0);
                             if current_idx > 0 {
@@ -318,7 +328,9 @@ pub fn PhotoViewerModal(
                                 scale.set(1.0);
                                 offset_x.set(0.0);
                                 offset_y.set(0.0);
-                                app_state.write().photo_viewer_modal = Some((prev_name, path));
+                                app_state.write().active_modal = Some(
+                                    crate::AppModal::PhotoViewer(prev_name, path),
+                                );
                             }
                         }
                     },
@@ -333,7 +345,10 @@ pub fn PhotoViewerModal(
                     onclick: move |e| {
                         e.stop_propagation();
                         let state = app_state.read();
-                        if let Some((current_name, path)) = state.photo_viewer_modal.clone() {
+                        if let Some(crate::AppModal::PhotoViewer(current_name, path)) = state
+                            .active_modal
+                            .clone()
+                        {
                             let files = &media_files_next;
                             let current_idx = files.iter().position(|f| f == &current_name).unwrap_or(0);
                             if current_idx + 1 < files.len() {
@@ -342,7 +357,9 @@ pub fn PhotoViewerModal(
                                 scale.set(1.0);
                                 offset_x.set(0.0);
                                 offset_y.set(0.0);
-                                app_state.write().photo_viewer_modal = Some((next_name, path));
+                                app_state.write().active_modal = Some(
+                                    crate::AppModal::PhotoViewer(next_name, path),
+                                );
                             }
                         }
                     },
@@ -354,7 +371,7 @@ pub fn PhotoViewerModal(
             div {
                 class: "w-full h-full flex items-center justify-center overflow-hidden",
                 onclick: move |_| {
-                    app_state.write().photo_viewer_modal = None;
+                    app_state.write().active_modal = None;
                 },
 
                 if is_video {

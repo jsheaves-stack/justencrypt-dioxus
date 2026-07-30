@@ -111,8 +111,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
     let mut context_menu = use_context::<Signal<ContextMenuState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
     let upload_state = use_context::<Signal<crate::UploadState>>();
-    let create_folder_modal_state = app_state.read().create_folder_modal;
-    let create_file_modal_state = app_state.read().create_file_modal;
+    let active_modal_state = app_state.read().active_modal.clone();
     let needs_refetch = use_memo(move || app_state.read().needs_refetch);
     let file_upload_path = path.clone();
     let folder_upload_path = path.clone();
@@ -139,49 +138,9 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         display_count.set(50);
         let _ = document::eval("document.getElementById('file-explorer-main').scrollTop = 0;");
 
-        let mut state = app_state.write();
-        if state
-            .photo_viewer_modal
-            .as_ref()
-            .is_some_and(|(_, p)| p != &_path_for_reset)
-        {
-            state.photo_viewer_modal = None;
-        }
-        if state
-            .edit_file_modal
-            .as_ref()
-            .is_some_and(|(_, p)| p != &_path_for_reset)
-        {
-            state.edit_file_modal = None;
-        }
-        if state
-            .rename_modal
-            .as_ref()
-            .is_some_and(|(_, p, _)| p != &_path_for_reset)
-        {
-            state.rename_modal = None;
-        }
-        if state
-            .delete_modal
-            .as_ref()
-            .is_some_and(|(_, p)| p != &_path_for_reset)
-        {
-            state.delete_modal = None;
-        }
-        if state
-            .details_modal
-            .as_ref()
-            .is_some_and(|(_, p)| p != &_path_for_reset)
-        {
-            state.details_modal = None;
-        }
-        if state
-            .move_modal
-            .as_ref()
-            .is_some_and(|(_, p)| p != &_path_for_reset)
-        {
-            state.move_modal = None;
-        }
+        app_state
+            .write()
+            .close_modals_if_path_changed(&_path_for_reset);
     }));
 
     use_effect(move || {
@@ -277,11 +236,8 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                         let on_select_handler =
                             move |(idx, is_shift, _is_ctrl): (usize, bool, bool)| {
                                 let mut state = app_state.write();
-                                let (item_name, is_file) = match &current_files_clone[idx] {
-                                    FolderContent::File(f) => (f.file_name.clone(), true),
-                                    FolderContent::Folder(f) => (f.file_name.clone(), false),
-                                };
-                                let item_key = (item_name, is_file);
+                                let item = &current_files_clone[idx];
+                                let item_key = (item.file_name().to_string(), item.is_file());
 
                                 if is_shift {
                                     if let Some(last_idx) = state.last_selected_index {
@@ -291,14 +247,8 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                                         for item in
                                             current_files_clone.iter().take(end + 1).skip(start)
                                         {
-                                            let key = match item {
-                                                FolderContent::File(f) => {
-                                                    (f.file_name.clone(), true)
-                                                }
-                                                FolderContent::Folder(f) => {
-                                                    (f.file_name.clone(), false)
-                                                }
-                                            };
+                                            let key =
+                                                (item.file_name().to_string(), item.is_file());
                                             state.selected_files.insert(key);
                                         }
                                     } else {
@@ -349,49 +299,54 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
     let path_clone_back = path.clone();
     let path_clone_ctx = path.clone();
 
-    let media_files_list = if let Some(files) = sorted_files.read().as_ref() {
-        files
-            .iter()
-            .filter(|f| f.is_file())
-            .filter_map(|f| {
-                if let Some(ext) = f.file_extension() {
-                    if IMAGE_FORMATS
-                        .iter()
-                        .any(|fmt| ext.eq_ignore_ascii_case(fmt))
-                        || VIDEO_FORMATS
+    let media_files_list = use_memo(move || {
+        if let Some(files) = sorted_files.read().as_ref() {
+            files
+                .iter()
+                .filter(|f| f.is_file())
+                .filter_map(|f| {
+                    if let Some(ext) = f.file_extension() {
+                        if IMAGE_FORMATS
                             .iter()
                             .any(|fmt| ext.eq_ignore_ascii_case(fmt))
-                    {
-                        return Some(f.file_name().to_string());
+                            || VIDEO_FORMATS
+                                .iter()
+                                .any(|fmt| ext.eq_ignore_ascii_case(fmt))
+                        {
+                            return Some(f.file_name().to_string());
+                        }
                     }
-                }
-                None
-            })
-            .collect::<Vec<String>>()
-    } else {
-        Vec::new()
-    };
+                    None
+                })
+                .collect::<Vec<String>>()
+        } else {
+            Vec::new()
+        }
+    });
 
-    let (file_count, folder_count) = if let Some(files) = sorted_files.read().as_ref() {
+    let folder_stats = use_memo(move || {
         let mut total_files = 0;
         let mut total_folders = 0;
-        for item in files {
-            match item {
-                FolderContent::File(_) => total_files += 1,
-                FolderContent::Folder(f) => {
-                    total_folders += 1 + f.folder_count;
-                    total_files += f.file_count;
+
+        let folder_size = if let Some(files) = sorted_files.read().as_ref() {
+            let sum_size: i64 = files.iter().filter_map(|f| f.file_size()).sum();
+
+            for item in files {
+                match item {
+                    FolderContent::File(_) => total_files += 1,
+                    FolderContent::Folder(f) => {
+                        total_folders += 1 + f.folder_count;
+                        total_files += f.file_count;
+                    }
                 }
             }
-        }
-        (total_files, total_folders)
-    } else {
-        (0, 0)
-    };
-    let folder_size = sorted_files
-        .read()
-        .as_ref()
-        .map(|files| files.iter().filter_map(|f| f.file_size()).sum::<i64>());
+            Some(sum_size)
+        } else {
+            None
+        };
+
+        (total_files, total_folders, folder_size)
+    });
 
     rsx! {
         div {
@@ -414,6 +369,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                 } else {
                     path_clone_ctx[..path_clone_ctx.len() - 1].to_vec()
                 };
+                let (file_count, folder_count, folder_size) = *folder_stats.read();
                 let folder = Folder {
                     file_name: current_folder_name,
                     file_size: folder_size,
@@ -492,14 +448,14 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                     Button {
                         class: "w-full sm:w-auto",
                         onclick: move |_| {
-                            app_state.write().create_file_modal = true;
+                            app_state.write().active_modal = Some(crate::AppModal::CreateFile);
                         },
                         "Create File"
                     }
                     Button {
                         class: "w-full sm:w-auto",
                         onclick: move |_| {
-                            app_state.write().create_folder_modal = true;
+                            app_state.write().active_modal = Some(crate::AppModal::CreateFolder);
                         },
                         "Create Folder"
                     }
@@ -564,40 +520,52 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                 }
             }
 
-            if create_folder_modal_state {
-                CreateFolderModal { current_path: path.clone() }
-            }
-
-            if create_file_modal_state {
-                CreateFileModal { current_path: path.clone() }
-            }
-
-            if let Some((file_name, file_path)) = app_state.read().edit_file_modal.clone() {
-                EditFileModal { file_name, current_path: file_path }
-            }
-
-            if let Some((old_name, file_path, is_file)) = app_state.read().rename_modal.clone() {
-                RenameModal { old_name, current_path: file_path, is_file }
-            }
-
-            if let Some((items, file_path)) = app_state.read().delete_modal.clone() {
-                DeleteModal { items, current_path: file_path }
-            }
-
-            if let Some((file_name, file_path)) = app_state.read().photo_viewer_modal.clone() {
-                PhotoViewerModal {
-                    file_name,
-                    current_path: file_path,
-                    media_files: media_files_list.clone(),
+            match active_modal_state {
+                Some(crate::AppModal::CreateFolder) => {
+                    rsx! {
+                        CreateFolderModal { current_path: path.clone() }
+                    }
                 }
-            }
-
-            if let Some((item, file_path)) = app_state.read().details_modal.clone() {
-                DetailsModal { item, current_path: file_path }
-            }
-
-            if let Some((files_to_move, file_path)) = app_state.read().move_modal.clone() {
-                MoveModal { files_to_move, original_path: file_path }
+                Some(crate::AppModal::CreateFile) => {
+                    rsx! {
+                        CreateFileModal { current_path: path.clone() }
+                    }
+                }
+                Some(crate::AppModal::EditFile(file_name, file_path)) => {
+                    rsx! {
+                        EditFileModal { file_name, current_path: file_path }
+                    }
+                }
+                Some(crate::AppModal::Rename(old_name, file_path, is_file)) => {
+                    rsx! {
+                        RenameModal { old_name, current_path: file_path, is_file }
+                    }
+                }
+                Some(crate::AppModal::Delete((items, file_path))) => {
+                    rsx! {
+                        DeleteModal { items, current_path: file_path }
+                    }
+                }
+                Some(crate::AppModal::PhotoViewer(file_name, file_path)) => {
+                    rsx! {
+                        PhotoViewerModal {
+                            file_name,
+                            current_path: file_path,
+                            media_files: media_files_list.read().clone(),
+                        }
+                    }
+                }
+                Some(crate::AppModal::Details(item, file_path)) => {
+                    rsx! {
+                        DetailsModal { item, current_path: file_path }
+                    }
+                }
+                Some(crate::AppModal::Move(files_to_move, file_path)) => {
+                    rsx! {
+                        MoveModal { files_to_move, original_path: file_path }
+                    }
+                }
+                None => rsx! {},
             }
 
             div { class: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 h-min w-full px-4 py-4 gap-4",

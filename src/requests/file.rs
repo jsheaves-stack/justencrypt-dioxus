@@ -1,4 +1,4 @@
-use super::RequestBuilderExt;
+use super::{build_url, RequestBuilderExt};
 use crate::{api_url, ReqwestClient};
 use dioxus::{html::FileData, prelude::*, signals::Signal};
 use serde::{Deserialize, Serialize};
@@ -43,12 +43,7 @@ pub async fn patch_file(
     new_parent_folder_path: String,
     new_file_name: String,
 ) -> Result<(), ()> {
-    let file_url = format!(
-        "{}/file/{}/{}",
-        api_url(),
-        current_path.join("/"),
-        old_file_name
-    );
+    let file_url = build_url("file", &current_path, Some(&old_file_name));
     tracing::debug!(
         "Patching file at {} to new name {} in folder {}",
         file_url,
@@ -93,12 +88,7 @@ pub async fn delete_file(
     current_path: Vec<String>,
     file_name: String,
 ) -> Result<(), ()> {
-    let file_url = format!(
-        "{}/file/{}/{}",
-        api_url(),
-        current_path.join("/"),
-        file_name
-    );
+    let file_url = build_url("file", &current_path, Some(&file_name));
     tracing::debug!("Deleting file at {}", file_url);
 
     let resp = reqwest_client_context()
@@ -133,12 +123,7 @@ pub async fn download_file(
     current_path: Vec<String>,
     file_name: String,
 ) -> Result<(), ()> {
-    let file_url = format!(
-        "{}/file/{}/{}",
-        crate::api_url(),
-        current_path.join("/"),
-        file_name
-    );
+    let file_url = build_url("file", &current_path, Some(&file_name));
     tracing::debug!("Triggering WASM download for {}", file_url);
 
     let window = window().ok_or_else(|| {
@@ -192,12 +177,7 @@ pub async fn download_file(
         .save_file()
         .await
     {
-        let file_url = format!(
-            "{}/file/{}/{}",
-            crate::api_url(),
-            current_path.join("/"),
-            file_name
-        );
+        let file_url = build_url("file", &current_path, Some(&file_name));
         tracing::debug!("Downloading file from {} to {:?}", file_url, path.path());
         let mut resp = reqwest_client_context()
             .0
@@ -235,12 +215,7 @@ pub async fn get_file_text(
     current_path: Vec<String>,
     file_name: String,
 ) -> Result<String, ()> {
-    let file_url = format!(
-        "{}/file/{}/{}",
-        api_url(),
-        current_path.join("/"),
-        file_name
-    );
+    let file_url = build_url("file", &current_path, Some(&file_name));
     tracing::debug!("Getting file text for {}", file_url);
 
     let resp = reqwest_client_context()
@@ -275,12 +250,7 @@ pub async fn put_file_text(
     file_name: String,
     content: String,
 ) -> Result<(), ()> {
-    let file_url = format!(
-        "{}/file/{}/{}",
-        api_url(),
-        current_path.join("/"),
-        file_name
-    );
+    let file_url = build_url("file", &current_path, Some(&file_name));
     tracing::debug!("Putting file text to {}", file_url);
 
     let resp = reqwest_client_context()
@@ -490,13 +460,7 @@ async fn upload_chunked(
 ) -> Result<(), ()> {
     let file_name = file.path().display().to_string();
 
-    let file_path_str = current_path.join("/");
-    let init_url = format!(
-        "{}/file/upload/initiate/{}/{}",
-        api_url(),
-        file_path_str,
-        file_name
-    );
+    let init_url = build_url("file/upload/initiate", &current_path, Some(&file_name));
 
     tracing::debug!("Initializing chunked upload: {}", init_url);
 
