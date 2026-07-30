@@ -553,8 +553,10 @@ pub async fn put_file(
     reqwest_client_context: Signal<ReqwestClient>,
     mut upload_state: Signal<crate::UploadState>,
     current_path: Vec<String>,
-    files: Vec<FileData>,
+    mut files: Vec<FileData>,
 ) -> Result<(), ()> {
+    files.sort_by_key(|a| std::cmp::Reverse(a.size()));
+
     // Pre-populate all tasks as Pending
     tracing::debug!(
         "Preparing to upload {} file(s) to {:?}",

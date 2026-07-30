@@ -6,21 +6,62 @@ use crate::{
         context_menu::{ContextMenuState, ContextMenuTarget},
     },
     models::{Folder as ModelFolder, FolderContent},
-    Route,
+    AppState, Route,
 };
 
 #[component]
-pub fn Folder(file: ModelFolder, current_path: Vec<String>) -> Element {
+pub fn Folder(
+    file: ModelFolder,
+    current_path: Vec<String>,
+    index: usize,
+    on_select: EventHandler<(usize, bool, bool)>,
+) -> Element {
     let router = router();
     let new_file = file.clone();
 
     let mut context_menu = use_context::<Signal<ContextMenuState>>();
+    let app_state = use_context::<Signal<AppState>>();
+
     let file_clone = file.clone();
     let current_path_clone = current_path.clone();
 
+    let display_name = file.file_name.clone();
+
+    let mut press_task = use_signal(|| None);
+    let mut was_long_pressed = use_signal(|| false);
+    let mut is_pressed = use_signal(|| false);
+
     rsx! {
         div {
-            class: "flex justify-center h-40 sm:h-48 md:h-56 w-full cursor-pointer",
+            class: "flex justify-center h-40 sm:h-48 md:h-56 w-full cursor-pointer relative group/folder",
+            onmousedown: move |_| {
+                is_pressed.set(true);
+                let handle = spawn(async move {
+                    #[cfg(target_arch = "wasm32")]
+                    gloo_timers::future::sleep(std::time::Duration::from_millis(500)).await;
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+                    if *is_pressed.read() {
+                        was_long_pressed.set(true);
+                        on_select.call((index, false, false));
+                    }
+                });
+                press_task.set(Some(handle));
+            },
+            onmouseup: move |_| {
+                is_pressed.set(false);
+                if let Some(handle) = press_task.take() {
+                    handle.cancel();
+                }
+            },
+            onmouseleave: move |_| {
+                is_pressed.set(false);
+                if let Some(handle) = press_task.take() {
+                    handle.cancel();
+                }
+            },
             oncontextmenu: move |e| {
                 e.prevent_default();
                 e.stop_propagation();
@@ -34,14 +75,45 @@ pub fn Folder(file: ModelFolder, current_path: Vec<String>) -> Element {
                 state.position = (coords.x, coords.y);
             },
             Card {
-                class: "w-full h-full grid grid-rows-[1fr,auto] active:scale-95 transition-all duration-300 hover:shadow-lg group",
-                onclick: move |_| {
-                    let mut new_path = current_path.clone();
-                    new_path.push(new_file.file_name.clone());
-                    router
-                        .push(Route::FileExplorer {
-                            path: new_path,
-                        });
+                class: format!(
+                    "w-full h-full grid grid-rows-[1fr,auto] active:scale-95 transition-all duration-300 hover:shadow-lg group select-none {}",
+                    if app_state.read().selected_files.contains(&(display_name.clone(), false)) {
+                        "ring-2 ring-primary bg-primary/5"
+                    } else {
+                        ""
+                    },
+                ),
+                onclick: move |e: Event<MouseData>| {
+                    if *was_long_pressed.read() {
+                        was_long_pressed.set(false);
+                        e.stop_propagation();
+                        return;
+                    }
+
+                    let has_selection = !app_state.read().selected_files.is_empty();
+
+                    if e.modifiers().contains(Modifiers::SHIFT)
+                        // Open the folder
+                        || e.modifiers().contains(Modifiers::CONTROL)
+                    {
+                        e.stop_propagation();
+                        on_select
+                            .call((
+                                index,
+                                e.modifiers().contains(Modifiers::SHIFT),
+                                e.modifiers().contains(Modifiers::CONTROL),
+                            ));
+                    } else if has_selection {
+                        e.stop_propagation();
+                        on_select.call((index, false, false));
+                    } else {
+                        let mut new_path = current_path.clone();
+                        new_path.push(new_file.file_name.clone());
+                        router
+                            .push(Route::FileExplorer {
+                                path: new_path,
+                            });
+                    }
                 },
                 CardContent { class: "flex flex-col items-center justify-center p-0 pt-6",
                     svg {
@@ -79,6 +151,25 @@ pub fn Folder(file: ModelFolder, current_path: Vec<String>) -> Element {
                             "{file.file_name}"
                         }
                     }
+                }
+            }
+            div {
+                class: format!(
+                    "absolute top-2 right-2 z-10 transition-opacity duration-200 {}",
+                    if app_state.read().selected_files.contains(&(file.file_name.clone(), false)) {
+                        "opacity-100"
+                    } else {
+                        "opacity-0"
+                    },
+                ),
+                input {
+                    r#type: "checkbox",
+                    class: "w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer",
+                    checked: app_state.read().selected_files.contains(&(file.file_name.clone(), false)),
+                    onclick: move |e| {
+                        e.stop_propagation();
+                        on_select.call((index, false, false));
+                    },
                 }
             }
         }

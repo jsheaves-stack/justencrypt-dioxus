@@ -7,6 +7,7 @@ use crate::{
         edit_file_modal::EditFileModal,
         file::File as FileComponent,
         folder::Folder as FolderComponent,
+        move_modal::MoveModal,
         photo_viewer_modal::PhotoViewerModal,
         rename_modal::RenameModal,
         ui::{
@@ -163,7 +164,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         if state
             .delete_modal
             .as_ref()
-            .is_some_and(|(_, p, _)| p != &_path_for_reset)
+            .is_some_and(|(_, p)| p != &_path_for_reset)
         {
             state.delete_modal = None;
         }
@@ -173,6 +174,13 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
             .is_some_and(|(_, p)| p != &_path_for_reset)
         {
             state.details_modal = None;
+        }
+        if state
+            .move_modal
+            .as_ref()
+            .is_some_and(|(_, p)| p != &_path_for_reset)
+        {
+            state.move_modal = None;
         }
     }));
 
@@ -258,17 +266,74 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         }
         Some((Ok(_), resource_path)) if resource_path == path => {
             if let Some(files) = sorted_files.read().as_ref() {
+                let current_files = files.clone();
+
                 files
                     .iter()
+                    .enumerate()
                     .take(*display_count.read())
-                    .map(|item| {
+                    .map(|(index, item)| {
+                        let current_files_clone = current_files.clone();
+                        let on_select_handler =
+                            move |(idx, is_shift, _is_ctrl): (usize, bool, bool)| {
+                                let mut state = app_state.write();
+                                let (item_name, is_file) = match &current_files_clone[idx] {
+                                    FolderContent::File(f) => (f.file_name.clone(), true),
+                                    FolderContent::Folder(f) => (f.file_name.clone(), false),
+                                };
+                                let item_key = (item_name, is_file);
+
+                                if is_shift {
+                                    if let Some(last_idx) = state.last_selected_index {
+                                        let start = std::cmp::min(last_idx, idx);
+                                        let end = std::cmp::max(last_idx, idx);
+
+                                        for item in
+                                            current_files_clone.iter().take(end + 1).skip(start)
+                                        {
+                                            let key = match item {
+                                                FolderContent::File(f) => {
+                                                    (f.file_name.clone(), true)
+                                                }
+                                                FolderContent::Folder(f) => {
+                                                    (f.file_name.clone(), false)
+                                                }
+                                            };
+                                            state.selected_files.insert(key);
+                                        }
+                                    } else {
+                                        state.selected_files.insert(item_key);
+                                        state.last_selected_index = Some(idx);
+                                    }
+                                } else {
+                                    if state.selected_files.contains(&item_key) {
+                                        state.selected_files.remove(&item_key);
+                                    } else {
+                                        state.selected_files.insert(item_key);
+                                    }
+                                    state.last_selected_index = Some(idx);
+                                }
+                            };
+
                         rsx! {
                             match item {
-                                FolderContent::File(file) => rsx! {
-                                    FileComponent { file: file.clone(), current_path: path.clone() }
-                                },
+                                FolderContent::File(file) => {
+                                    rsx! {
+                                        FileComponent {
+                                            file: file.clone(),
+                                            current_path: path.clone(),
+                                            index,
+                                            on_select: on_select_handler.clone(),
+                                        }
+                                    }
+                                }
                                 FolderContent::Folder(folder) => rsx! {
-                                    FolderComponent { file: folder.clone(), current_path: path.clone() }
+                                    FolderComponent {
+                                        file: folder.clone(),
+                                        current_path: path.clone(),
+                                        index,
+                                        on_select: on_select_handler.clone(),
+                                    }
                                 },
                             }
                         }
@@ -337,6 +402,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
             oncontextmenu: move |evt| {
                 evt.prevent_default();
                 evt.stop_propagation();
+                app_state.write().selected_files.clear();
                 let coords = evt.client_coordinates();
                 let mut state = context_menu.write();
                 let current_folder_name = path_clone_ctx
@@ -362,9 +428,14 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                 );
                 state.position = (coords.x, coords.y);
             },
+            onclick: move |_| {
+                app_state.write().selected_files.clear();
+            },
             onkeydown: move |evt| {
                 if evt.key().to_string() == "." {
                     show_hidden.toggle();
+                } else if evt.key().to_string() == "Escape" {
+                    app_state.write().selected_files.clear();
                 }
             },
             onscroll: move |evt| {
@@ -509,8 +580,8 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                 RenameModal { old_name, current_path: file_path, is_file }
             }
 
-            if let Some((name, file_path, is_file)) = app_state.read().delete_modal.clone() {
-                DeleteModal { name, current_path: file_path, is_file }
+            if let Some((items, file_path)) = app_state.read().delete_modal.clone() {
+                DeleteModal { items, current_path: file_path }
             }
 
             if let Some((file_name, file_path)) = app_state.read().photo_viewer_modal.clone() {
@@ -523,6 +594,10 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
 
             if let Some((item, file_path)) = app_state.read().details_modal.clone() {
                 DetailsModal { item, current_path: file_path }
+            }
+
+            if let Some((files_to_move, file_path)) = app_state.read().move_modal.clone() {
+                MoveModal { files_to_move, original_path: file_path }
             }
 
             div { class: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 h-min w-full px-4 py-4 gap-4",

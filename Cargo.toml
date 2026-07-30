@@ -40,6 +40,7 @@ web-sys = { version = "0.3.91", features = [
   "RequestCredentials",
   "Response",
 ] }
+gloo-timers = { version = "0.3", features = ["futures"] }
 
 [profile.wasm-dev]
 inherits = "dev"

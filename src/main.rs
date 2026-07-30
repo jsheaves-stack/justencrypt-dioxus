@@ -117,7 +117,10 @@ fn App() -> Element {
         delete_modal: None,
         photo_viewer_modal: None,
         details_modal: None,
+        move_modal: None,
         needs_refetch: false,
+        selected_files: std::collections::HashSet::new(),
+        last_selected_index: None,
     };
 
     use_context_provider(|| Signal::new(ReqwestClient(client)));

@@ -79,6 +79,8 @@ pub fn ContextMenu() -> Element {
                                 let rename_path = path.clone();
                                 let delete_file_name = file.file_name.clone();
                                 let delete_path = path.clone();
+                                let move_file_name = file.file_name.clone();
+                                let move_path = path.clone();
                                 let download_file_name = file.file_name.clone();
                                 let download_path = path.clone();
                                 let details_item = FolderContent::File(file.clone());
@@ -122,11 +124,36 @@ pub fn ContextMenu() -> Element {
                                         ContextMenuItem {
                                             label: "Delete",
                                             onclick: move |_| {
-                                                app_state.write().delete_modal = Some((
-                                                    delete_file_name.clone(),
-                                                    delete_path.clone(),
-                                                    true,
-                                                ));
+                                                let mut state = app_state.write();
+                                                let mut items_to_delete = vec![];
+                                                if state.selected_files.contains(&(delete_file_name.clone(), true)) {
+                                                    items_to_delete = state.selected_files.iter().cloned().collect();
+                                                } else {
+                                                    state.selected_files.clear();
+                                                    items_to_delete.push((delete_file_name.clone(), true));
+                                                }
+                                                state.delete_modal = Some((items_to_delete, delete_path.clone()));
+                                                context_menu.write().target = ContextMenuTarget::None;
+                                            },
+                                        }
+                                        ContextMenuItem {
+                                            label: "Move",
+                                            onclick: move |_| {
+                                                let mut state = app_state.write();
+                                                let mut files_to_move = vec![];
+                                                if state.selected_files.contains(&(move_file_name.clone(), true)) {
+                                                    files_to_move = state
+                                                        .selected_files
+                                                        .iter()
+                                                        .filter_map(|(name, is_file)| {
+                                                            if *is_file { Some(name.clone()) } else { None }
+                                                        })
+                                                        .collect();
+                                                } else {
+                                                    state.selected_files.clear();
+                                                    files_to_move.push(move_file_name.clone());
+                                                }
+                                                state.move_modal = Some((files_to_move, move_path.clone()));
                                                 context_menu.write().target = ContextMenuTarget::None;
                                             },
                                         }
@@ -182,11 +209,15 @@ pub fn ContextMenu() -> Element {
                                             ContextMenuItem {
                                                 label: "Delete",
                                                 onclick: move |_| {
-                                                    app_state.write().delete_modal = Some((
-                                                        delete_folder_name.clone(),
-                                                        delete_path.clone(),
-                                                        false,
-                                                    ));
+                                                    let mut state = app_state.write();
+                                                    let mut items_to_delete = vec![];
+                                                    if state.selected_files.contains(&(delete_folder_name.clone(), false)) {
+                                                        items_to_delete = state.selected_files.iter().cloned().collect();
+                                                    } else {
+                                                        state.selected_files.clear();
+                                                        items_to_delete.push((delete_folder_name.clone(), false));
+                                                    }
+                                                    state.delete_modal = Some((items_to_delete, delete_path.clone()));
                                                     context_menu.write().target = ContextMenuTarget::None;
                                                 },
                                             }

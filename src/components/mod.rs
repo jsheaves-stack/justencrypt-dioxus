@@ -8,6 +8,7 @@ pub mod file_explorer;
 pub mod folder;
 pub mod home;
 pub mod login_form;
+pub mod move_modal;
 pub mod photo_viewer_modal;
 pub mod rename_modal;
 pub mod ui;

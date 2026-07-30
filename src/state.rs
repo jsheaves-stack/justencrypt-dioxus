@@ -30,6 +30,8 @@ impl Default for UploadState {
     }
 }
 
+pub type DeleteModalTarget = (Vec<(String, bool)>, Vec<String>);
+
 pub struct AppState {
     pub _theme: String,
     pub authenticated: bool,
@@ -37,10 +39,13 @@ pub struct AppState {
     pub create_file_modal: bool,
     pub edit_file_modal: Option<(String, Vec<String>)>,
     pub rename_modal: Option<(String, Vec<String>, bool)>,
-    pub delete_modal: Option<(String, Vec<String>, bool)>,
+    pub delete_modal: Option<DeleteModalTarget>,
     pub photo_viewer_modal: Option<(String, Vec<String>)>,
     pub details_modal: Option<(crate::models::FolderContent, Vec<String>)>,
+    pub move_modal: Option<(Vec<String>, Vec<String>)>,
     pub needs_refetch: bool,
+    pub selected_files: std::collections::HashSet<(String, bool)>,
+    pub last_selected_index: Option<usize>,
 }
 
 impl AppState {
@@ -52,6 +57,7 @@ impl AppState {
             || self.delete_modal.is_some()
             || self.photo_viewer_modal.is_some()
             || self.details_modal.is_some()
+            || self.move_modal.is_some()
     }
 
     pub fn close_all_modals(&mut self) {
@@ -62,6 +68,7 @@ impl AppState {
         self.delete_modal = None;
         self.photo_viewer_modal = None;
         self.details_modal = None;
+        self.move_modal = None;
     }
 }
 

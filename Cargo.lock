@@ -2690,6 +2690,7 @@ dependencies = [
  "dioxus-html",
  "dioxus-logger",
  "futures-util",
+ "gloo-timers",
  "js-sys",
  "reqwest",
  "rfd 0.15.4",
