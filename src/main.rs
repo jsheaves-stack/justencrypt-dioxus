@@ -16,11 +16,9 @@ use components::{
 };
 use dioxus::prelude::*;
 use reqwest::Client;
+use std::{collections::HashSet, sync::OnceLock};
 #[cfg(not(target_arch = "wasm32"))]
-use std::env::var;
-#[cfg(not(target_arch = "wasm32"))]
-use std::sync::Arc;
-use std::sync::OnceLock;
+use std::{env::var, sync::Arc};
 use tracing::Level;
 
 #[cfg(debug_assertions)]
@@ -112,7 +110,7 @@ fn App() -> Element {
         authenticated: false,
         active_modal: None,
         needs_refetch: false,
-        selected_files: std::collections::HashSet::new(),
+        selected_files: HashSet::new(),
         last_selected_index: None,
     };
 

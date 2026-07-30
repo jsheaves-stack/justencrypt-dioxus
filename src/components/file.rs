@@ -13,16 +13,45 @@ use crate::{
     AppState,
 };
 use dioxus::prelude::*;
+use std::{cmp, time::Duration};
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::time;
 
 #[component]
-pub fn File(
-    file: ModelFile,
-    current_path: Vec<String>,
-    index: usize,
-    on_select: EventHandler<(usize, bool, bool)>,
-) -> Element {
+pub fn File(file: ModelFile, current_path: Vec<String>, index: usize) -> Element {
     let mut context_menu = use_context::<Signal<ContextMenuState>>();
     let mut app_state = use_context::<Signal<AppState>>();
+    let sorted_files = use_context::<Memo<Option<Vec<FolderContent>>>>();
+
+    let mut on_select = move |(idx, is_shift, _is_ctrl): (usize, bool, bool)| {
+        let mut state = app_state.write();
+        if let Some(files) = sorted_files.read().as_ref() {
+            let item = &files[idx];
+            let item_key = (item.file_name().to_string(), item.is_file());
+
+            if is_shift {
+                if let Some(last_idx) = state.last_selected_index {
+                    let start = cmp::min(last_idx, idx);
+                    let end = cmp::max(last_idx, idx);
+
+                    for item in files.iter().take(end + 1).skip(start) {
+                        let key = (item.file_name().to_string(), item.is_file());
+                        state.selected_files.insert(key);
+                    }
+                } else {
+                    state.selected_files.insert(item_key);
+                    state.last_selected_index = Some(idx);
+                }
+            } else {
+                if state.selected_files.contains(&item_key) {
+                    state.selected_files.remove(&item_key);
+                } else {
+                    state.selected_files.insert(item_key);
+                }
+                state.last_selected_index = Some(idx);
+            }
+        }
+    };
 
     let file_clone = file.clone();
     let current_path_clone = current_path.clone();
@@ -72,14 +101,14 @@ pub fn File(
                 is_pressed.set(true);
                 let handle = spawn(async move {
                     #[cfg(target_arch = "wasm32")]
-                    gloo_timers::future::sleep(std::time::Duration::from_millis(500)).await;
+                    gloo_timers::future::sleep(Duration::from_millis(500)).await;
 
                     #[cfg(not(target_arch = "wasm32"))]
-                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    time::sleep(Duration::from_millis(500)).await;
 
                     if *is_pressed.read() {
                         was_long_pressed.set(true);
-                        on_select.call((index, false, false));
+                        on_select((index, false, false));
                     }
                 });
                 press_task.set(Some(handle));
@@ -130,15 +159,14 @@ pub fn File(
                         || e.modifiers().contains(Modifiers::CONTROL)
                     {
                         e.stop_propagation();
-                        on_select
-                            .call((
-                                index,
-                                e.modifiers().contains(Modifiers::SHIFT),
-                                e.modifiers().contains(Modifiers::CONTROL),
-                            ));
+                        on_select((
+                            index,
+                            e.modifiers().contains(Modifiers::SHIFT),
+                            e.modifiers().contains(Modifiers::CONTROL),
+                        ));
                     } else if has_selection {
                         e.stop_propagation();
-                        on_select.call((index, false, false));
+                        on_select((index, false, false));
                     } else if is_media {
                         e.stop_propagation();
                         app_state.write().active_modal = Some(
@@ -215,7 +243,7 @@ pub fn File(
                     checked: app_state.read().selected_files.contains(&(file.file_name.clone(), true)),
                     onclick: move |e| {
                         e.stop_propagation();
-                        on_select.call((index, false, false));
+                        on_select((index, false, false));
                     },
                 }
             }

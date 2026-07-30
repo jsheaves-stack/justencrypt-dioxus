@@ -1,4 +1,5 @@
 use reqwest::Client;
+use std::collections::HashSet;
 
 /// Status of an individual file upload.
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -89,7 +90,7 @@ pub struct AppState {
     /// Triggers a re-fetch of the current folder's contents
     pub needs_refetch: bool,
     /// Currently selected files in the explorer: HashSet of (file_name, is_file)
-    pub selected_files: std::collections::HashSet<(String, bool)>,
+    pub selected_files: HashSet<(String, bool)>,
     /// Index of the last selected item (used for shift-click range selection)
     pub last_selected_index: Option<usize>,
 }

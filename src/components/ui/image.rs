@@ -4,6 +4,8 @@ use dioxus::prelude::*;
 use crate::{requests::RequestBuilderExt, ReqwestClient};
 #[cfg(not(target_arch = "wasm32"))]
 use base64::engine::{general_purpose, Engine};
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::task;
 
 #[component]
 pub fn Image(src: String, class: Option<String>, alt: Option<String>) -> Element {
@@ -45,7 +47,14 @@ pub fn Image(src: String, class: Option<String>, alt: Option<String>) -> Element
                         .to_string();
 
                     match r.bytes().await {
-                        Ok(b) => Some((mime, b)),
+                        Ok(b) => {
+                            let mime_clone = mime.clone();
+                            let b64 =
+                                task::spawn_blocking(move || general_purpose::STANDARD.encode(b))
+                                    .await
+                                    .unwrap_or_default();
+                            Some(format!("data:{};base64,{}", mime_clone, b64))
+                        }
                         Err(_) => None,
                     }
                 }
@@ -56,10 +65,7 @@ pub fn Image(src: String, class: Option<String>, alt: Option<String>) -> Element
         let image_resource = image_data.read().clone();
 
         match image_resource {
-            Some(Some((mime, bytes))) => {
-                let b64 = general_purpose::STANDARD.encode(bytes);
-                let data_url = format!("data:{};base64,{}", mime, b64);
-
+            Some(Some(data_url)) => {
                 rsx! {
                     img { src: data_url, class, alt }
                 }

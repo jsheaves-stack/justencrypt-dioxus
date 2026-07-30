@@ -130,12 +130,14 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         }));
 
     let mut display_count = use_signal(|| 50);
+    let mut last_scroll_height = use_signal(|| 0.0);
     let mut sort_criteria = use_signal(|| SortCriteria::TypeAsc);
     let mut show_hidden = use_signal(|| false);
 
     let _path_for_reset = path.clone();
     use_effect(use_reactive!(|_path_for_reset| {
         display_count.set(50);
+        last_scroll_height.set(0.0);
         let _ = document::eval("document.getElementById('file-explorer-main').scrollTop = 0;");
 
         app_state
@@ -213,6 +215,8 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         Some(files)
     });
 
+    use_context_provider(|| sorted_files);
+
     let loading_spinner = rsx! {
         div { class: "flex w-full justify-center p-12 col-span-full",
             Spinner { class: "h-8 w-8 text-muted-foreground" }
@@ -225,64 +229,29 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         }
         Some((Ok(_), resource_path)) if resource_path == path => {
             if let Some(files) = sorted_files.read().as_ref() {
-                let current_files = files.clone();
-
                 files
                     .iter()
                     .enumerate()
                     .take(*display_count.read())
                     .map(|(index, item)| {
-                        let current_files_clone = current_files.clone();
-                        let on_select_handler =
-                            move |(idx, is_shift, _is_ctrl): (usize, bool, bool)| {
-                                let mut state = app_state.write();
-                                let item = &current_files_clone[idx];
-                                let item_key = (item.file_name().to_string(), item.is_file());
-
-                                if is_shift {
-                                    if let Some(last_idx) = state.last_selected_index {
-                                        let start = std::cmp::min(last_idx, idx);
-                                        let end = std::cmp::max(last_idx, idx);
-
-                                        for item in
-                                            current_files_clone.iter().take(end + 1).skip(start)
-                                        {
-                                            let key =
-                                                (item.file_name().to_string(), item.is_file());
-                                            state.selected_files.insert(key);
-                                        }
-                                    } else {
-                                        state.selected_files.insert(item_key);
-                                        state.last_selected_index = Some(idx);
-                                    }
-                                } else {
-                                    if state.selected_files.contains(&item_key) {
-                                        state.selected_files.remove(&item_key);
-                                    } else {
-                                        state.selected_files.insert(item_key);
-                                    }
-                                    state.last_selected_index = Some(idx);
-                                }
-                            };
-
                         rsx! {
                             match item {
                                 FolderContent::File(file) => {
                                     rsx! {
                                         FileComponent {
+                                            key: "{file.file_name}",
                                             file: file.clone(),
                                             current_path: path.clone(),
                                             index,
-                                            on_select: on_select_handler.clone(),
                                         }
                                     }
                                 }
                                 FolderContent::Folder(folder) => rsx! {
                                     FolderComponent {
+                                        key: "{folder.file_name}",
                                         file: folder.clone(),
                                         current_path: path.clone(),
                                         index,
-                                        on_select: on_select_handler.clone(),
                                     }
                                 },
                             }
@@ -396,10 +365,15 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
             },
             onscroll: move |evt| {
                 let data = evt.data();
-                if data.scroll_top() + (data.client_height() as f64)
-                    >= (data.scroll_height() as f64) - 1000.0
+                let sh = data.scroll_height() as f64;
+                if data.scroll_top() + (data.client_height() as f64) >= sh - 1000.0
+                    && sh != *last_scroll_height.read()
                 {
-                    display_count += 50;
+                    let total_items = sorted_files.read().as_ref().map(|f| f.len()).unwrap_or(0);
+                    if *display_count.read() < total_items {
+                        display_count += 50;
+                        last_scroll_height.set(sh);
+                    }
                 }
             },
             Header {}

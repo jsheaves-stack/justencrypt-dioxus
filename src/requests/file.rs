@@ -3,6 +3,7 @@ use crate::{api_url, ReqwestClient};
 use dioxus::{html::FileData, prelude::*, signals::Signal};
 use serde::{Deserialize, Serialize};
 use std::{
+    cmp,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
@@ -519,7 +520,7 @@ pub async fn put_file(
     current_path: Vec<String>,
     mut files: Vec<FileData>,
 ) -> Result<(), ()> {
-    files.sort_by_key(|a| std::cmp::Reverse(a.size()));
+    files.sort_by_key(|a| cmp::Reverse(a.size()));
 
     // Pre-populate all tasks as Pending
     tracing::debug!(
