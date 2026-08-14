@@ -120,40 +120,40 @@ pub fn ContextMenu() -> Element {
                                             }
                                         },
                                     }
+                                }
 
-                                    if is_file {
-                                        if is_editable {
-                                            ContextMenuItem {
-                                                label: "Edit",
-                                                onclick: {
-                                                    let edit_name = name.clone();
-                                                    let edit_path = path.clone();
-                                                    move |_| {
-                                                        app_state.write().active_modal = Some(
-                                                            crate::AppModal::EditFile(edit_name.clone(), edit_path.clone()),
-                                                        );
-                                                        context_menu.write().target = ContextMenuTarget::None;
-                                                    }
-                                                },
-                                            }
-                                        }
-
+                                if is_file {
+                                    if is_editable {
                                         ContextMenuItem {
-                                            label: "Download",
+                                            label: "Edit",
                                             onclick: {
-                                                let dl_name = name.clone();
-                                                let dl_path = path.clone();
+                                                let edit_name = name.clone();
+                                                let edit_path = path.clone();
                                                 move |_| {
-                                                    let name_clone = dl_name.clone();
-                                                    let path_clone = dl_path.clone();
-                                                    spawn(async move {
-                                                        let _ = download_file(reqwest_client_context, path_clone, name_clone)
-                                                            .await;
-                                                    });
+                                                    app_state.write().active_modal = Some(
+                                                        crate::AppModal::EditFile(edit_name.clone(), edit_path.clone()),
+                                                    );
                                                     context_menu.write().target = ContextMenuTarget::None;
                                                 }
                                             },
                                         }
+                                    }
+
+                                    ContextMenuItem {
+                                        label: "Download",
+                                        onclick: {
+                                            let dl_name = name.clone();
+                                            let dl_path = path.clone();
+                                            move |_| {
+                                                let name_clone = dl_name.clone();
+                                                let path_clone = dl_path.clone();
+                                                spawn(async move {
+                                                    let _ = download_file(reqwest_client_context, path_clone, name_clone)
+                                                        .await;
+                                                });
+                                                context_menu.write().target = ContextMenuTarget::None;
+                                            }
+                                        },
                                     }
                                 }
 
