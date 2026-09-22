@@ -14,7 +14,7 @@ jobs:
     name: Docker
     output:
       type: RegistryOutput
-      tags: '@server@/@project_path@/@project_name@:latest @server@/@project_path@/@project_name@:@build_version@'
+      tags: '@server@/@project_path@/@project_name@:latest'
     registryLogins:
     - registryUrl: '@server_url@'
       userName: '@job_token@'
