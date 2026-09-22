@@ -1,4 +1,4 @@
-version: 46
+version: 53
 jobs:
 - name: build
   steps:
@@ -10,24 +10,6 @@ jobs:
     withSubmodules: false
     condition: SUCCESSFUL
     optional: false
-  - type: CommandStep
-    name: Generate Build Number
-    runInContainer: true
-    image: alpine:latest
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        VERSION=$(grep -m1 '^version' Cargo.toml | cut -d '"' -f 2)
-        DATE=$(date -u +%Y%m%d)
-        echo "${VERSION}-${DATE}.@build_number@" > build_version.txt
-    useTTY: true
-    condition: SUCCESSFUL
-    optional: false
-  - type: SetBuildVersionStep
-    name: Set Build Version
-    buildVersion: '@file:build_version.txt@'
-    condition: SUCCESSFUL
-    optional: false
   - type: BuildImageStep
     name: Docker
     output:
@@ -37,7 +19,7 @@ jobs:
     - registryUrl: '@server_url@'
       userName: '@job_token@'
       passwordSecret: publish_token
-    moreOptions: --build-arg APP_VERSION=@build_version@
+    moreOptions: --target web
     condition: SUCCESSFUL
     optional: false
   paramSpecs:
@@ -59,4 +41,6 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 14400
