@@ -1,61 +1,52 @@
-use super::RequestBuilderExt;
+use super::{send_and_discard, RequestBuilderExt, RequestError};
 use crate::{api_url, components::login_form::LoginForm, ReqwestClient};
 use dioxus::signals::Signal;
 
 pub async fn create_session(
     reqwest_client_context: Signal<ReqwestClient>,
     login_form: LoginForm,
-) -> Result<(), ()> {
+) -> Result<(), RequestError> {
     let create_session_url = format!("{}/session", api_url());
     tracing::debug!("Creating session at {}", create_session_url);
 
-    let resp = reqwest_client_context()
-        .0
-        .post(create_session_url)
-        .with_credentials_if_wasm()
-        .json(&login_form)
-        .send()
-        .await;
+    let result = send_and_discard(
+        reqwest_client_context()
+            .0
+            .post(create_session_url)
+            .with_credentials_if_wasm()
+            .json(&login_form),
+    )
+    .await;
 
-    match resp {
-        Ok(r) if r.status().is_success() => {
+    match &result {
+        Ok(_) => {
             tracing::debug!("Session created successfully");
-            Ok(())
+            crate::persist_session_cookies();
         }
-        Ok(r) => {
-            tracing::error!("Login failed with status: {}", r.status());
-            Err(())
-        }
-        Err(err) => {
-            tracing::error!("Login request failed: {}", err);
-            Err(())
-        }
+        Err(e) => tracing::error!("Login failed: {:?}", e),
     }
+
+    result
 }
 
-pub async fn destroy_session(reqwest_client_context: Signal<ReqwestClient>) -> Result<(), ()> {
+pub async fn destroy_session(
+    reqwest_client_context: Signal<ReqwestClient>,
+) -> Result<(), RequestError> {
     let destroy_session_url = format!("{}/session", api_url());
     tracing::debug!("Destroying session at {}", destroy_session_url);
 
-    let resp = reqwest_client_context()
-        .0
-        .delete(destroy_session_url)
-        .with_credentials_if_wasm()
-        .send()
-        .await;
+    let result = send_and_discard(
+        reqwest_client_context()
+            .0
+            .delete(destroy_session_url)
+            .with_credentials_if_wasm(),
+    )
+    .await;
 
-    match resp {
-        Ok(r) if r.status().is_success() => {
-            tracing::debug!("Session destroyed successfully");
-            Ok(())
-        }
-        Ok(r) => {
-            tracing::error!("Logout failed with status: {}", r.status());
-            Err(())
-        }
-        Err(err) => {
-            tracing::error!("Logout request failed: {}", err);
-            Err(())
-        }
+    match &result {
+        Ok(_) => tracing::debug!("Session destroyed successfully"),
+        Err(e) => tracing::error!("Logout failed: {:?}", e),
     }
+
+    result
 }

@@ -1,9 +1,9 @@
 use dioxus::prelude::*;
 
 use crate::{
-    components::ui::button::Button,
+    components::ui::{button::Button, modal::Modal},
     models::{File, Folder, FolderContent},
-    AppState,
+    ModalState,
 };
 
 fn format_file_size(size_opt: Option<i64>) -> String {
@@ -41,7 +41,7 @@ fn format_date(date_opt: Option<&str>) -> String {
 
 #[component]
 pub fn DetailsModal(item: FolderContent, current_path: Vec<String>) -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+    let mut modal_state = use_context::<Signal<ModalState>>();
 
     let (item_type, name, size_str, created_str, modified_str, contains) = match &item {
         FolderContent::File(File {
@@ -101,75 +101,84 @@ pub fn DetailsModal(item: FolderContent, current_path: Vec<String>) -> Element {
     };
 
     rsx! {
-        div {
-            class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none p-4 animate-in fade-in duration-200",
-            tabindex: "-1",
-            onkeydown: move |e| {
-                if e.key().to_string() == "Escape" {
-                    app_state.write().active_modal = None;
-                }
+        Modal {
+            title: rsx! { "Properties" },
+            class: "w-[90vw] max-w-[500px] sm:w-fit sm:min-w-[400px]",
+            on_close: move |_| modal_state.write().close_all_modals(),
+            footer: rsx! {
+                Button { onclick: move |_| modal_state.write().close_all_modals(), "Close" }
             },
-            onclick: move |_| {
-                app_state.write().active_modal = None;
-            },
-            div {
-                class: "relative flex w-[90vw] max-w-[500px] sm:w-fit sm:min-w-[400px] flex-col rounded-lg border border-border bg-background p-4 sm:p-6 text-foreground shadow-lg animate-in zoom-in-95 duration-200",
-                onclick: move |e| e.stop_propagation(),
-                div { class: "flex justify-between items-center mb-6 pb-2 border-b border-border",
-                    h2 { class: "text-xl font-semibold flex items-center gap-2", "Properties" }
-                    button {
-                        class: "text-muted-foreground hover:text-foreground p-2 transition-colors",
-                        onclick: move |_| {
-                            app_state.write().active_modal = None;
-                        },
-                        "✕"
+            div { class: "flex flex-col gap-3 my-2 text-sm",
+                div { class: "grid grid-cols-[80px,1fr] sm:grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
+                    span { class: "font-medium text-muted-foreground", "Name:" }
+                    span { class: "font-semibold break-all text-foreground", {name} }
+                }
+                div { class: "grid grid-cols-[80px,1fr] sm:grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
+                    span { class: "font-medium text-muted-foreground", "Type:" }
+                    span { class: "text-foreground", {item_type} }
+                }
+                div { class: "grid grid-cols-[80px,1fr] sm:grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
+                    span { class: "font-medium text-muted-foreground", "Location:" }
+                    span { class: "font-mono text-xs text-foreground break-all", {location} }
+                }
+                div { class: "grid grid-cols-[80px,1fr] sm:grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
+                    span { class: "font-medium text-muted-foreground", "Size:" }
+                    span { class: "text-foreground", {size_str} }
+                }
+                if let Some(contains_str) = contains {
+                    div { class: "grid grid-cols-[80px,1fr] sm:grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
+                        span { class: "font-medium text-muted-foreground", "Contains:" }
+                        span { class: "text-foreground", {contains_str} }
                     }
                 }
-
-                div { class: "flex flex-col gap-3 my-2 text-sm",
-                    div { class: "grid grid-cols-[80px,1fr] sm:grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
-                        span { class: "font-medium text-muted-foreground", "Name:" }
-                        span { class: "font-semibold break-all text-foreground", {name} }
-                    }
-                    div { class: "grid grid-cols-[80px,1fr] sm:grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
-                        span { class: "font-medium text-muted-foreground", "Type:" }
-                        span { class: "text-foreground", {item_type} }
-                    }
-                    div { class: "grid grid-cols-[80px,1fr] sm:grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
-                        span { class: "font-medium text-muted-foreground", "Location:" }
-                        span { class: "font-mono text-xs text-foreground break-all",
-                            {location}
-                        }
-                    }
-                    div { class: "grid grid-cols-[80px,1fr] sm:grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
-                        span { class: "font-medium text-muted-foreground", "Size:" }
-                        span { class: "text-foreground", {size_str} }
-                    }
-                    if let Some(contains_str) = contains {
-                        div { class: "grid grid-cols-[80px,1fr] sm:grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
-                            span { class: "font-medium text-muted-foreground", "Contains:" }
-                            span { class: "text-foreground", {contains_str} }
-                        }
-                    }
-                    div { class: "grid grid-cols-[80px,1fr] sm:grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
-                        span { class: "font-medium text-muted-foreground", "Created:" }
-                        span { class: "text-foreground", {created_str} }
-                    }
-                    div { class: "grid grid-cols-[80px,1fr] sm:grid-cols-[110px,1fr] gap-2 items-baseline py-1.5",
-                        span { class: "font-medium text-muted-foreground", "Modified:" }
-                        span { class: "text-foreground", {modified_str} }
-                    }
+                div { class: "grid grid-cols-[80px,1fr] sm:grid-cols-[110px,1fr] gap-2 items-baseline py-1.5 border-b border-border/40",
+                    span { class: "font-medium text-muted-foreground", "Created:" }
+                    span { class: "text-foreground", {created_str} }
                 }
-
-                div { class: "flex justify-end mt-6 pt-3 border-t border-border",
-                    Button {
-                        onclick: move |_| {
-                            app_state.write().active_modal = None;
-                        },
-                        "Close"
-                    }
+                div { class: "grid grid-cols-[80px,1fr] sm:grid-cols-[110px,1fr] gap-2 items-baseline py-1.5",
+                    span { class: "font-medium text-muted-foreground", "Modified:" }
+                    span { class: "text-foreground", {modified_str} }
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_file_size_handles_each_unit_bracket() {
+        assert_eq!(format_file_size(Some(500)), "500 bytes");
+        assert_eq!(format_file_size(Some(2048)), "2.00 KB (2048 bytes)");
+        assert_eq!(
+            format_file_size(Some(5 * 1024 * 1024)),
+            "5.00 MB (5242880 bytes)"
+        );
+        assert_eq!(
+            format_file_size(Some(3 * 1024 * 1024 * 1024)),
+            "3.00 GB (3221225472 bytes)"
+        );
+    }
+
+    #[test]
+    fn format_file_size_handles_missing_or_negative() {
+        assert_eq!(format_file_size(None), "-");
+        assert_eq!(format_file_size(Some(-1)), "-");
+    }
+
+    #[test]
+    fn format_date_strips_time_and_zone_markers() {
+        assert_eq!(
+            format_date(Some("2024-01-02T03:04:05.123Z")),
+            "2024-01-02 03:04:05 UTC"
+        );
+    }
+
+    #[test]
+    fn format_date_handles_missing_or_empty() {
+        assert_eq!(format_date(None), "-");
+        assert_eq!(format_date(Some("")), "-");
     }
 }

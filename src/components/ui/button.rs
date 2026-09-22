@@ -1,4 +1,3 @@
-#![allow(unused)]
 use dioxus::prelude::*;
 use std::fmt;
 
@@ -8,9 +7,7 @@ pub enum ButtonVariant {
     Default,
     Destructive,
     Outline,
-    Secondary,
     Ghost,
-    Link,
 }
 
 #[derive(Clone, Copy, PartialEq, Default, Debug)]
@@ -18,7 +15,6 @@ pub enum ButtonSize {
     #[default]
     Default,
     Sm,
-    Lg,
     Icon,
 }
 
@@ -27,7 +23,6 @@ pub enum ButtonType {
     #[default]
     Button,
     Submit,
-    Reset,
 }
 
 impl fmt::Display for ButtonType {
@@ -35,7 +30,6 @@ impl fmt::Display for ButtonType {
         match self {
             ButtonType::Button => write!(f, "button"),
             ButtonType::Submit => write!(f, "submit"),
-            ButtonType::Reset => write!(f, "reset"),
         }
     }
 }
@@ -92,7 +86,7 @@ fn LoaderIcon() -> Element {
 
 #[component]
 pub fn Button(props: ButtonProps) -> Element {
-    let base_styles = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95 duration-200";
+    let base_styles = "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95 duration-200";
 
     let variant_styles = match props.variant {
         ButtonVariant::Default => "bg-blue-700/80 text-blue-50 hover:bg-blue-700 shadow-sm hover:shadow-[0_0_12px_rgba(29,78,216,0.3)] border border-blue-600/30",
@@ -100,15 +94,12 @@ pub fn Button(props: ButtonProps) -> Element {
         ButtonVariant::Outline => {
             "border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-sm"
         }
-        ButtonVariant::Secondary => "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm",
         ButtonVariant::Ghost => "hover:bg-accent hover:text-accent-foreground",
-        ButtonVariant::Link => "text-primary underline-offset-4 hover:underline",
     };
 
     let size_styles = match props.size {
         ButtonSize::Default => "h-10 px-4 py-2",
         ButtonSize::Sm => "h-9 rounded-md px-3",
-        ButtonSize::Lg => "h-11 rounded-md px-8",
         ButtonSize::Icon => "h-10 w-10",
     };
 

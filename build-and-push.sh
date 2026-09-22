@@ -32,14 +32,34 @@ FULL_TAG="${VERSION}-${DATE}.${ITERATION}"
 FULL_IMAGE="${REPO}:${FULL_TAG}"
 LATEST_IMAGE="${REPO}:latest"
 
-echo "Building version: $FULL_TAG"
+echo "Building version: $FULL_TAG (Iteration: $ITERATION)"
 
-# Build the image
-docker build --build-arg APP_VERSION="$FULL_TAG" -t "$FULL_IMAGE" -t "$LATEST_IMAGE" .
+echo "Building web image..."
+# Build the web image
+docker build \
+    --target web \
+    --build-arg APP_VERSION="$FULL_TAG" \
+    --build-arg BUILD_NUMBER="$ITERATION" \
+    -t "$FULL_IMAGE" \
+    -t "$LATEST_IMAGE" .
 
 # Check build success
 if [ $? -ne 0 ]; then
-    echo "Error: Docker build failed"
+    echo "Error: Docker web build failed"
+    exit 1
+fi
+
+echo "Building desktop AppImage..."
+# Build the desktop AppImage
+docker build \
+    --target desktop-artifacts \
+    --build-arg APP_VERSION="$FULL_TAG" \
+    --build-arg BUILD_NUMBER="$ITERATION" \
+    --output type=local,dest=./dist .
+
+# Check build success
+if [ $? -ne 0 ]; then
+    echo "Error: Docker desktop build failed"
     exit 1
 fi
 
@@ -49,3 +69,4 @@ docker push "$FULL_IMAGE"
 docker push "$LATEST_IMAGE"
 
 echo "Successfully built and pushed $FULL_TAG and latest"
+echo "Desktop AppImage has been extracted to ./dist"

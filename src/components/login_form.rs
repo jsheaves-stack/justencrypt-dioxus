@@ -4,10 +4,11 @@ use crate::{
         card::{Card, CardContent, CardTitle},
         input::Input,
     },
-    requests::session::create_session,
+    requests::{session::create_session, RequestError},
     AppState, ReqwestClient, Route,
 };
 use dioxus::{prelude::*, router::RouterContext};
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
@@ -25,24 +26,29 @@ pub fn Login() -> Element {
     let mut show_password = use_signal(|| false);
     let mut username = use_signal(String::new);
     let mut password = use_signal(String::new);
+    let mut error_msg = use_signal::<Option<String>>(|| None);
 
     let onsubmit = move |event: FormEvent| async move {
         event.prevent_default();
         is_loading.set(true);
+        error_msg.set(None);
 
         match event.parsed_values::<LoginForm>() {
-            Ok(login_form) => {
-                let create_session_result =
-                    create_session(reqwest_client_context, login_form).await;
-                if create_session_result.is_ok() {
+            Ok(login_form) => match create_session(reqwest_client_context, login_form).await {
+                Ok(_) => {
                     app_state.write().authenticated = true;
                     router.replace(Route::Home {});
-                } else {
-                    tracing::error!("Failed to create session");
                 }
-            }
+                Err(RequestError::Status(StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN)) => {
+                    error_msg.set(Some("Invalid username or password".to_string()));
+                }
+                Err(e) => {
+                    error_msg.set(Some(e.user_message("log in")));
+                }
+            },
             Err(e) => {
                 tracing::error!("Failed to parse login form values: {:?}", e);
+                error_msg.set(Some("Failed to log in".to_string()));
             }
         }
 
@@ -137,6 +143,11 @@ pub fn Login() -> Element {
                                     }
                                 }
                             }
+                            if let Some(err) = error_msg.read().as_ref() {
+                                span { class: "block text-sm text-destructive text-center",
+                                    {err.clone()}
+                                }
+                            }
                             div { class: "w-min m-auto",
                                 Button {
                                     r#type: ButtonType::Submit,
@@ -144,6 +155,8 @@ pub fn Login() -> Element {
                                     "Login"
                                 }
                             }
+
+                            ServerUrlInput {}
                         }
                     }
                 }
@@ -155,4 +168,36 @@ pub fn Login() -> Element {
             }
         }
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[component]
+fn ServerUrlInput() -> Element {
+    let mut url = use_signal(crate::api_url);
+
+    rsx! {
+        div { class: "pt-4 border-t border-border mt-4",
+            label { class: "block text-sm font-medium text-white pb-2", "Server URL" }
+            Input {
+                r#type: "text",
+                name: "server_url",
+                id: "server_url",
+                required: true,
+                value: Some(url.read().clone()),
+                oninput: move |e: FormEvent| {
+                    url.set(e.value());
+                    crate::set_api_url(e.value());
+                },
+                onchange: move |_| {
+                    crate::save_api_url_to_disk();
+                },
+            }
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+#[component]
+fn ServerUrlInput() -> Element {
+    rsx! {}
 }

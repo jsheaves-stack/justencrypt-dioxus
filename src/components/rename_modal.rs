@@ -1,154 +1,130 @@
 use dioxus::prelude::*;
 
 use crate::{
-    components::ui::button::{Button, ButtonVariant},
+    components::{
+        modal_action::finish_modal_action,
+        ui::{
+            button::{Button, ButtonVariant},
+            error_message::ErrorMessage,
+            modal::Modal,
+        },
+    },
+    models::ItemKey,
     requests::{file::patch_file, folder::patch_folder},
-    AppState, ReqwestClient,
+    AppState, ModalState, ReqwestClient,
 };
 
 #[component]
-pub fn RenameModal(old_name: String, current_path: Vec<String>, is_file: bool) -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+pub fn RenameModal(item: ItemKey, current_path: Vec<String>) -> Element {
+    let app_state = use_context::<Signal<AppState>>();
+    let mut modal_state = use_context::<Signal<ModalState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
 
+    let old_name = item.name.clone();
     let mut new_name = use_signal::<String>(|| old_name.clone());
     let mut is_saving = use_signal(|| false);
     let mut error_msg = use_signal::<Option<String>>(|| None);
 
     let old_name_clone = old_name.clone();
     let current_path_clone = current_path.clone();
-    let is_file_clone = is_file;
+    let is_file_clone = item.is_file;
 
     rsx! {
-        div {
-            class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none p-4 animate-in fade-in duration-200",
-            tabindex: "-1",
-            onkeydown: move |e| {
-                if e.key().to_string() == "Escape" {
-                    app_state.write().active_modal = None;
+        Modal {
+            title: rsx! {
+                "Rename "
+                {if is_file_clone { "File" } else { "Folder" }}
+            },
+            class: "max-w-[400px]",
+            closable: !is_saving(),
+            on_close: move |_| modal_state.write().close_all_modals(),
+            footer: rsx! {
+                Button {
+                    variant: ButtonVariant::Outline,
+                    disabled: is_saving(),
+                    onclick: move |_| modal_state.write().close_all_modals(),
+                    "Cancel"
+                }
+                Button {
+                    onclick: move |_| {
+                        let new_name_str = new_name.read().clone();
+                        if new_name_str.trim().is_empty() {
+                            error_msg.set(Some("Name cannot be empty".to_string()));
+                            return;
+                        }
+                        if new_name_str == old_name_clone {
+                            modal_state.write().close_all_modals();
+                            return;
+                        }
+
+                        let current_path = current_path_clone.clone();
+                        let old_name_str = old_name_clone.clone();
+                        let is_file_flag = is_file_clone;
+
+                        is_saving.set(true);
+                        spawn(async move {
+                            let new_parent_path = current_path.join("/");
+                            let result = if is_file_flag {
+                                patch_file(
+                                        reqwest_client_context,
+                                        current_path.clone(),
+                                        old_name_str,
+                                        new_parent_path,
+                                        new_name_str,
+                                    )
+                                    .await
+                            } else {
+                                patch_folder(
+                                        reqwest_client_context,
+                                        current_path.clone(),
+                                        old_name_str,
+                                        new_parent_path,
+                                        new_name_str,
+                                    )
+                                    .await
+                            };
+
+                            let action = if is_file_flag {
+                                "rename file"
+                            } else {
+                                "rename folder"
+                            };
+                            finish_modal_action(
+                                app_state,
+                                modal_state,
+                                is_saving,
+                                error_msg,
+                                result,
+                                action,
+                            );
+                        });
+                    },
+                    disabled: is_saving(),
+                    if is_saving() {
+                        "Saving..."
+                    } else {
+                        "Save"
+                    }
                 }
             },
-            onclick: move |_| {
-                app_state.write().active_modal = None;
-            },
-            div {
-                class: "relative flex w-full max-w-[400px] flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg animate-in zoom-in-95 duration-200",
-                onclick: move |e| e.stop_propagation(),
-                div { class: "flex justify-between items-center mb-4",
-                    h2 { class: "text-xl font-semibold",
-                        "Rename "
-                        {if is_file_clone { "File" } else { "Folder" }}
-                    }
-                    button {
-                        class: "text-muted-foreground hover:text-foreground p-2",
-                        onclick: move |_| {
-                            app_state.write().active_modal = None;
+            div { class: "flex flex-col gap-4 my-4",
+                div { class: "flex flex-col gap-2",
+                    label { class: "text-sm font-medium", "New Name" }
+                    input {
+                        class: "h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        r#type: "text",
+                        autofocus: true,
+                        onmounted: move |e| async move {
+                            let _ = e.set_focus(true).await;
                         },
-                        "✕"
+                        value: "{new_name.read()}",
+                        oninput: move |e| {
+                            new_name.set(e.value());
+                            error_msg.set(None);
+                        },
                     }
                 }
-
-                div { class: "flex flex-col gap-4 my-4",
-                    div { class: "flex flex-col gap-2",
-                        label { class: "text-sm font-medium", "New Name" }
-                        input {
-                            class: "h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                            r#type: "text",
-                            autofocus: true,
-                            onmounted: move |e| async move {
-                                let _ = e.set_focus(true).await;
-                            },
-                            value: "{new_name.read()}",
-                            oninput: move |e| {
-                                new_name.set(e.value());
-                                error_msg.set(None);
-                            },
-                        }
-                    }
-                    if let Some(err) = error_msg.read().as_ref() {
-                        span { class: "text-sm text-destructive", {err.clone()} }
-                    }
-                }
-
-                div { class: "flex justify-end mt-2 gap-2",
-                    Button {
-                        variant: ButtonVariant::Outline,
-                        onclick: move |_| {
-                            app_state.write().active_modal = None;
-                        },
-                        "Cancel"
-                    }
-                    Button {
-                        onclick: move |_| {
-                            let new_name_str = new_name.read().clone();
-                            if new_name_str.trim().is_empty() {
-                                error_msg.set(Some("Name cannot be empty".to_string()));
-                                return;
-                            }
-                            if new_name_str == old_name_clone {
-                                app_state.write().active_modal = None;
-                                return;
-                            }
-
-                            let current_path = current_path_clone.clone();
-                            let old_name_str = old_name_clone.clone();
-                            let is_file_flag = is_file_clone;
-
-                            is_saving.set(true);
-                            spawn(async move {
-                                if is_file_flag {
-                                    let new_parent_path = current_path.join("/");
-                                    match patch_file(
-                                            reqwest_client_context,
-                                            current_path.clone(),
-                                            old_name_str,
-                                            new_parent_path,
-                                            new_name_str,
-                                        )
-                                        .await
-                                    {
-                                        Ok(_) => {
-                                            is_saving.set(false);
-                                            app_state.write().active_modal = None;
-                                            app_state.write().needs_refetch = true;
-                                        }
-                                        Err(_) => {
-                                            is_saving.set(false);
-                                            error_msg.set(Some("Failed to rename file".to_string()));
-                                        }
-                                    }
-                                } else {
-                                    let new_parent_path = current_path.join("/");
-                                    match patch_folder(
-                                            reqwest_client_context,
-                                            current_path.clone(),
-                                            old_name_str,
-                                            new_parent_path,
-                                            new_name_str,
-                                        )
-                                        .await
-                                    {
-                                        Ok(_) => {
-                                            is_saving.set(false);
-                                            app_state.write().active_modal = None;
-                                            app_state.write().needs_refetch = true;
-                                        }
-                                        Err(_) => {
-                                            is_saving.set(false);
-                                            error_msg.set(Some("Failed to rename folder".to_string()));
-                                        }
-                                    }
-                                }
-                            });
-                        },
-                        disabled: is_saving(),
-                        if is_saving() {
-                            "Saving..."
-                        } else {
-                            "Save"
-                        }
-                    }
-                }
+                ErrorMessage { message: error_msg.read().clone() }
             }
         }
     }

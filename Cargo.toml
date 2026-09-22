@@ -10,11 +10,11 @@ license = "MIT"
 tracing = "0.1.41"
 dioxus-logger = "0.7.3"
 dioxus-html = { version = "0.7.3", features = ["serialize"] }
-reqwest = { version = "0.12.24", features = ["json", "cookies", "stream"] }
 serde_json = "1.0.145"
 serde = "1.0.228"
 base64 = "0.22.1"
 futures-util = "0.3.32"
+futures-channel = "0.3.32"
 bytes = "1.11.1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -22,8 +22,30 @@ dioxus = { version = "0.7.3", features = ["desktop", "router"] }
 dioxus-desktop = "0.7.3"
 tokio = { version = "1.50.0", features = ["fs", "io-util"] }
 rfd = "0.15"
+directories = "6.0.0"
+reqwest_cookie_store = "0.8.2"
+cookie_store = "0.21.1"
+# "blocking" backs the local media proxy server (see main.rs media_server
+# module) - it runs on its own plain OS thread, not the tokio runtime, so it
+# uses reqwest's blocking client rather than async.
+reqwest = { version = "0.12.24", features = ["json", "cookies", "stream", "blocking"] }
+# Tiny loopback HTTP server for that same proxy. WebKitGTK's custom URI
+# scheme protocol (wry's with_asynchronous_custom_protocol) never delivers
+# the incoming Range header on Linux - see the comment in wry's own
+# examples/streaming.rs ("Linux will ALWAYS return empty headers") - so a
+# <video> element routed through it has no way to make partial requests and
+# ends up downloading the whole file before anything plays. A real
+# http://127.0.0.1 origin doesn't have that limitation: WebKitGTK's normal
+# networking/GStreamer stack handles Range requests over it exactly like any
+# other HTTP server.
+tiny_http = "0.12"
+# Per-launch random token the media proxy requires on every request, so an
+# unrelated local process can't use it as an unauthenticated tunnel to the
+# API (it has no other access control - see media_proxy.rs).
+uuid = { version = "1", features = ["v4"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+reqwest = { version = "0.12.24", features = ["json", "cookies", "stream"] }
 dioxus = { version = "0.7.3", features = ["web", "router"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
@@ -51,3 +73,6 @@ inherits = "dev"
 
 [profile.android-dev]
 inherits = "dev"
+
+[dev-dependencies]
+url = "2.5.8"

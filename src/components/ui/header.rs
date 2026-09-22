@@ -1,9 +1,10 @@
-#![allow(unused)]
-
 use crate::{
-    components::ui::button::{Button, ButtonSize, ButtonVariant},
+    components::ui::{
+        button::{Button, ButtonSize, ButtonVariant},
+        toast::show_toast,
+    },
     requests::session::destroy_session,
-    ReqwestClient, Route,
+    ReqwestClient, Route, ToastKind, ToastState,
 };
 use dioxus::prelude::*;
 
@@ -13,11 +14,18 @@ pub fn Header() -> Element {
     let mut is_menu_open = use_signal(|| false);
     let mut app_state = use_context::<Signal<crate::AppState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
+    let toast_state = use_context::<Signal<ToastState>>();
 
     let menu_entries = vec![("Home", Route::FileExplorer { path: vec![] })];
 
     rsx! {
-        header { class: "sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+        // No backdrop-blur here deliberately: unlike the other backdrop-blur
+        // uses in this app (transient modal/overlay backdrops), a `sticky`
+        // header has to keep re-blurring whatever's scrolling underneath it
+        // on every frame, for as long as the app is open - one of the more
+        // expensive things to composite continuously, for a header that's
+        // opaque enough not to need it.
+        header { class: "sticky top-0 z-50 w-full border-b border-border/40 bg-background/95",
             div { class: "flex h-16 w-full p-4 items-center",
                 div { class: "mr-4 hidden md:flex",
                     span {
@@ -187,12 +195,19 @@ pub fn Header() -> Element {
                                         Ok(_) => {
                                             tracing::debug!("Successfully logged out");
                                         }
-                                        Err(_) => {
+                                        Err(e) => {
                                             tracing::warn!(
-                                                "Failed to cleanly destroy session, logging out locally anyway"
+                                                "Failed to cleanly destroy session, logging out locally anyway: {:?}",
+                                                e
+                                            );
+                                            show_toast(
+                                                toast_state,
+                                                "Logged out, but the server session couldn't be cleared",
+                                                ToastKind::Info,
                                             );
                                         }
                                     }
+                                    crate::clear_session_cookies();
                                     app_state.write().authenticated = false;
                                 }
                             },

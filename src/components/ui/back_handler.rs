@@ -1,11 +1,11 @@
 #[cfg(target_arch = "wasm32")]
-use crate::AppState;
+use crate::ModalState;
 use dioxus::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
 #[component]
 pub fn BackHandler() -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+    let mut modal_state = use_context::<Signal<ModalState>>();
 
     use_hook(move || {
         let mut eval = document::eval(
@@ -41,14 +41,14 @@ pub fn BackHandler() -> Element {
 
         spawn(async move {
             loop {
-                if let Ok(_) = eval.recv::<String>().await {
-                    app_state.write().close_all_modals();
+                if eval.recv::<String>().await.is_ok() {
+                    modal_state.write().close_all_modals();
                 }
             }
         });
     });
 
-    let is_any_open = app_state.read().is_any_modal_open();
+    let is_any_open = modal_state.read().is_any_modal_open();
     let mut was_open = use_signal(|| false);
 
     use_effect(use_reactive!(|is_any_open| {

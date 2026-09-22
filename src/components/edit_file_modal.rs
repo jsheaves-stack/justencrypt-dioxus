@@ -1,21 +1,28 @@
 use dioxus::prelude::*;
 
 use crate::{
-    components::ui::{
-        button::{Button, ButtonVariant},
-        spinner::Spinner,
+    components::{
+        modal_action::finish_modal_action,
+        ui::{
+            button::{Button, ButtonVariant},
+            error_message::ErrorMessage,
+            modal::Modal,
+            spinner::Spinner,
+        },
     },
     requests::file::{get_file_text, put_file_text},
-    AppState, ReqwestClient,
+    AppState, ModalState, ReqwestClient,
 };
 
 #[component]
 pub fn EditFileModal(file_name: String, current_path: Vec<String>) -> Element {
-    let mut app_state = use_context::<Signal<AppState>>();
+    let app_state = use_context::<Signal<AppState>>();
+    let mut modal_state = use_context::<Signal<ModalState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
 
     let mut file_content = use_signal::<Option<String>>(|| None);
     let mut is_saving = use_signal(|| false);
+    let error_msg = use_signal::<Option<String>>(|| None);
 
     let current_path_clone = current_path.clone();
     let file_name_clone = file_name.clone();
@@ -33,79 +40,63 @@ pub fn EditFileModal(file_name: String, current_path: Vec<String>) -> Element {
     }));
 
     rsx! {
-        div {
-            class: "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm focus:outline-none p-4 animate-in fade-in duration-200",
-            tabindex: "-1",
-            onkeydown: move |e| {
-                if e.key().to_string() == "Escape" {
-                    app_state.write().active_modal = None;
+        Modal {
+            title: rsx! { "Editing: {file_name}" },
+            class: "max-w-5xl max-h-[85vh] sm:h-5/6",
+            closable: !is_saving(),
+            on_close: move |_| modal_state.write().close_all_modals(),
+            footer: rsx! {
+                Button {
+                    variant: ButtonVariant::Outline,
+                    disabled: is_saving(),
+                    onclick: move |_| modal_state.write().close_all_modals(),
+                    "Cancel"
                 }
-            },
-            onclick: move |_| {
-                app_state.write().active_modal = None;
-            },
-            div {
-                class: "relative flex w-full max-w-5xl max-h-[85vh] sm:h-5/6 flex-col rounded-lg border border-border bg-background p-6 text-foreground shadow-lg animate-in zoom-in-95 duration-200",
-                onclick: move |e| e.stop_propagation(),
-                div { class: "flex justify-between items-center mb-4",
-                    h2 { class: "text-xl font-semibold", "Editing: {file_name}" }
-                    button {
-                        class: "text-muted-foreground hover:text-foreground p-2",
-                        onclick: move |_| {
-                            app_state.write().active_modal = None;
-                        },
-                        "✕"
-                    }
-                }
-
-                div { class: "flex-grow flex flex-col min-h-0",
-                    if let Some(content) = file_content.read().as_ref() {
-                        textarea {
-                            class: "w-full h-full flex-grow resize-none rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 font-mono",
-                            autofocus: true,
-                            onmounted: move |e| async move {
-                                let _ = e.set_focus(true).await;
-                            },
-                            value: content.clone(),
-                            oninput: move |e| {
-                                file_content.set(Some(e.value()));
-                            },
-                        }
-                    } else {
-                        div { class: "flex items-center justify-center h-full",
-                            Spinner { class: "h-8 w-8 text-primary" }
-                        }
-                    }
-                }
-
-                div { class: "flex justify-end mt-4 gap-2",
-                    Button {
-                        variant: ButtonVariant::Outline,
-                        onclick: move |_| {
-                            app_state.write().active_modal = None;
-                        },
-                        "Cancel"
-                    }
-                    Button {
-                        onclick: move |_| {
-                            let text = file_content.read().clone().unwrap_or_default();
-                            let current_path = current_path.clone();
-                            let file_name = file_name.clone();
-                            is_saving.set(true);
-                            spawn(async move {
-                                let _ = put_file_text(reqwest_client_context, current_path, file_name, text)
+                Button {
+                    onclick: move |_| {
+                        let text = file_content.read().clone().unwrap_or_default();
+                        let current_path = current_path.clone();
+                        let file_name = file_name.clone();
+                        is_saving.set(true);
+                        spawn(async move {
+                            let result =
+                                put_file_text(reqwest_client_context, current_path, file_name, text)
                                     .await;
-                                is_saving.set(false);
-                                app_state.write().active_modal = None;
-                                app_state.write().needs_refetch = true;
-                            });
+                            finish_modal_action(
+                                app_state,
+                                modal_state,
+                                is_saving,
+                                error_msg,
+                                result,
+                                "save file",
+                            );
+                        });
+                    },
+                    disabled: is_saving(),
+                    if is_saving() {
+                        "Saving..."
+                    } else {
+                        "Save"
+                    }
+                }
+            },
+            ErrorMessage { message: error_msg.read().clone(), class: "mb-2" }
+            div { class: "flex-grow flex flex-col min-h-0",
+                if let Some(content) = file_content.read().as_ref() {
+                    textarea {
+                        class: "w-full h-full flex-grow resize-none rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 font-mono",
+                        autofocus: true,
+                        onmounted: move |e| async move {
+                            let _ = e.set_focus(true).await;
                         },
-                        disabled: is_saving(),
-                        if is_saving() {
-                            "Saving..."
-                        } else {
-                            "Save"
-                        }
+                        value: content.clone(),
+                        oninput: move |e| {
+                            file_content.set(Some(e.value()));
+                        },
+                    }
+                } else {
+                    div { class: "flex items-center justify-center h-full",
+                        Spinner { class: "h-8 w-8 text-primary" }
                     }
                 }
             }

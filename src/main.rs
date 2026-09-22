@@ -1,10 +1,16 @@
 #![allow(non_snake_case)]
 
+mod api;
 mod components;
+mod config;
+mod media_proxy;
 mod models;
 mod requests;
 pub mod state;
+mod util;
 
+pub use api::*;
+pub use media_proxy::*;
 pub use models::*;
 pub use state::*;
 
@@ -12,13 +18,13 @@ use components::{
     file_explorer::FileExplorer,
     home::Home,
     login_form::Login,
-    ui::{back_handler::BackHandler, context_menu::ContextMenuState, upload_modal::UploadModal},
+    ui::{
+        back_handler::BackHandler, context_menu::ContextMenuState, toast::ToastContainer,
+        upload_modal::UploadModal,
+    },
 };
 use dioxus::prelude::*;
 use reqwest::Client;
-use std::{collections::HashSet, sync::OnceLock};
-#[cfg(not(target_arch = "wasm32"))]
-use std::{env::var, sync::Arc};
 use tracing::Level;
 
 #[cfg(debug_assertions)]
@@ -27,36 +33,8 @@ const LOG_LEVEL: Level = Level::DEBUG;
 #[cfg(not(debug_assertions))]
 const LOG_LEVEL: Level = Level::INFO;
 
-pub fn api_url() -> &'static str {
-    static API_URL: OnceLock<String> = OnceLock::new();
-    API_URL.get_or_init(|| {
-        #[cfg(target_arch = "wasm32")]
-        {
-            let mut url = None;
-            if let Some(win) = web_sys::window() {
-                if let Ok(val) =
-                    js_sys::Reflect::get(&win, &wasm_bindgen::JsValue::from_str("API_URL"))
-                {
-                    if let Some(s) = val.as_string() {
-                        if !s.is_empty() {
-                            url = Some(s);
-                        }
-                    }
-                }
-            }
-            url.or_else(|| option_env!("API_URL").map(|s| s.to_string()))
-                .unwrap_or_else(|| "http://localhost:8000".to_string())
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            var("API_URL").unwrap_or_else(|_| "http://localhost:8000".to_string())
-        }
-    })
-}
-
-static TAILWIND_CSS: Asset = asset!("assets/tailwind.css");
-static MAIN_CSS: Asset = asset!("assets/main.css");
-static FAVICON_ICO: Asset = asset!("assets/favicon.ico");
+const TAILWIND_CSS: &str = include_str!("../assets/tailwind.css");
+const MAIN_CSS: &str = include_str!("../assets/main.css");
 
 #[derive(Clone, Routable, Debug, PartialEq)]
 pub enum Route {
@@ -72,8 +50,11 @@ pub enum Route {
 }
 
 pub const APP_VERSION: &str = match option_env!("APP_VERSION") {
-    Some(v) => v,
-    None => env!("CARGO_PKG_VERSION"),
+    // The Docker build always sets this env var, even to "" when no
+    // --build-arg APP_VERSION=... is passed, so option_env! sees Some("")
+    // rather than None in that case - treat that the same as unset.
+    Some(v) if !v.is_empty() => v,
+    _ => env!("CARGO_PKG_VERSION"),
 };
 
 fn main() {
@@ -82,42 +63,52 @@ fn main() {
     #[cfg(target_arch = "wasm32")]
     LaunchBuilder::web().launch(App);
 
+    // WebKitGTK's DMA-BUF renderer (the default since roughly 2.40) is badly
+    // broken on a wide range of GPU/Mesa/compositor combinations - not
+    // anything this app does, but a widely-reported upstream issue - causing
+    // severe lag across the *entire* UI that gets dramatically worse the
+    // longer the app runs (confirmed on this exact build: disabling it took
+    // a folder view from unusably laggy, worsening while scrolling, to
+    // smooth). There's no in-app fix beyond steering WebKitGTK away from
+    // that renderer path before it starts, which has to happen via this env
+    // var before the webview is created.
+    #[cfg(target_os = "linux")]
+    unsafe {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     #[cfg(not(target_arch = "wasm32"))]
     LaunchBuilder::desktop()
         .with_cfg(
-            dioxus_desktop::Config::new().with_window(
-                dioxus_desktop::WindowBuilder::new()
-                    .with_resizable(true)
-                    .with_title("JustEncrypt")
-                    .with_inner_size(dioxus_desktop::LogicalSize::new(880.0, 600.0)),
-            ),
+            dioxus_desktop::Config::new()
+                .with_window(
+                    dioxus_desktop::WindowBuilder::new()
+                        .with_resizable(true)
+                        .with_title("JustEncrypt")
+                        .with_inner_size(dioxus_desktop::LogicalSize::new(880.0, 600.0)),
+                )
+                .with_menu(None),
         )
         .launch(App);
 }
 
 fn App() -> Element {
     #[cfg(not(target_arch = "wasm32"))]
-    let client = {
-        let jar = Arc::new(reqwest::cookie::Jar::default());
-        Client::builder().cookie_provider(jar).build().unwrap()
-    };
+    let client = Client::builder()
+        .cookie_provider(cookie_jar())
+        .build()
+        .unwrap();
 
     #[cfg(target_arch = "wasm32")]
     let client = Client::builder().build().unwrap();
 
-    let app_state = AppState {
-        _theme: "dark".to_string(),
-        authenticated: false,
-        active_modal: None,
-        needs_refetch: false,
-        selected_files: HashSet::new(),
-        last_selected_index: None,
-    };
-
     use_context_provider(|| Signal::new(ReqwestClient(client)));
-    let mut app_state_sig = use_context_provider(|| Signal::new(app_state));
+    let mut app_state_sig = use_context_provider(|| Signal::new(AppState::default()));
+    use_context_provider(|| Signal::new(ModalState::default()));
+    use_context_provider(|| Signal::new(SelectionState::default()));
     use_context_provider(|| Signal::new(ContextMenuState::default()));
     use_context_provider(|| Signal::new(UploadState::default()));
+    use_context_provider(|| Signal::new(ToastState::default()));
 
     use_effect(move || {
         spawn(async move {
@@ -136,14 +127,25 @@ fn App() -> Element {
     });
 
     rsx! {
-        document::Stylesheet { href: TAILWIND_CSS }
-        document::Stylesheet { href: MAIN_CSS }
-        document::Link { rel: "icon", href: FAVICON_ICO }
+        AppStyles {}
 
         div { class: if app_state_sig.read()._theme == "dark" { "dark w-full h-full" } else { "w-full h-full" },
             Router::<Route> {}
             UploadModal {}
+            ToastContainer {}
             BackHandler {}
         }
+    }
+}
+
+/// Split out from `App()` so this never re-renders after first mount: it
+/// reads no signals, so unlike `App()` (which re-runs on every
+/// `app_state_sig` write - login/logout, any create/delete/move/rename) it's
+/// never marked dirty, and the 51KB embedded CSS is diffed exactly once
+/// instead of on every unrelated app_state change.
+fn AppStyles() -> Element {
+    rsx! {
+        style { "{TAILWIND_CSS}" }
+        style { "{MAIN_CSS}" }
     }
 }

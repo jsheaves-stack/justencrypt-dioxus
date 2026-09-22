@@ -7,8 +7,8 @@ use crate::{
         edit_file_modal::EditFileModal,
         file::File as FileComponent,
         folder::Folder as FolderComponent,
+        gallery::Gallery,
         move_modal::MoveModal,
-        photo_viewer_modal::PhotoViewerModal,
         rename_modal::RenameModal,
         ui::{
             button::{Button, ButtonVariant},
@@ -26,6 +26,14 @@ use std::{cmp::Ordering, str::FromStr};
 
 pub const IMAGE_FORMATS: [&str; 8] = ["APNG", "AVIF", "GIF", "JPG", "JPEG", "PNG", "SVG", "WebP"];
 pub const VIDEO_FORMATS: [&str; 6] = ["MP4", "WEBM", "OGG", "MOV", "AVI", "MKV"];
+
+pub fn is_image_ext(ext: &str) -> bool {
+    IMAGE_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f))
+}
+
+pub fn is_video_ext(ext: &str) -> bool {
+    VIDEO_FORMATS.iter().any(|f| ext.eq_ignore_ascii_case(f))
+}
 pub const EDITABLE_FORMATS: [&str; 50] = [
     "TXT",
     "MD",
@@ -104,14 +112,70 @@ impl FromStr for SortCriteria {
     }
 }
 
+/// Orders two folder entries for display, per `criteria`. Under `TypeAsc`,
+/// folders sort before files, then files group by extension; `TypeDesc`
+/// reverses that fully (files before folders, extensions Z-A) rather than
+/// just reversing the extension ordering within an unchanged folders-first
+/// grouping.
+fn compare_items(
+    file_a: &FolderContent,
+    file_b: &FolderContent,
+    criteria: SortCriteria,
+) -> Ordering {
+    let name_comparison = file_a
+        .file_name()
+        .chars()
+        .map(|c| c.to_ascii_lowercase())
+        .cmp(file_b.file_name().chars().map(|c| c.to_ascii_lowercase()));
+    let extension_comparison = file_a.file_extension().cmp(&file_b.file_extension());
+
+    match criteria {
+        SortCriteria::NameAsc => name_comparison,
+        SortCriteria::NameDesc => name_comparison.reverse(),
+        SortCriteria::TypeAsc => match (file_a.is_file(), file_b.is_file()) {
+            (false, true) => Ordering::Less,
+            (true, false) => Ordering::Greater,
+            _ => extension_comparison.then(name_comparison),
+        },
+        SortCriteria::TypeDesc => match (file_a.is_file(), file_b.is_file()) {
+            (false, true) => Ordering::Greater,
+            (true, false) => Ordering::Less,
+            _ => extension_comparison
+                .reverse()
+                .then(name_comparison.reverse()),
+        },
+        SortCriteria::SizeAsc => match (file_a.is_file(), file_b.is_file()) {
+            (false, true) => Ordering::Less,
+            (true, false) => Ordering::Greater,
+            _ => file_a
+                .file_size()
+                .unwrap_or(0)
+                .cmp(&file_b.file_size().unwrap_or(0))
+                .then(name_comparison),
+        },
+        SortCriteria::SizeDesc => match (file_a.is_file(), file_b.is_file()) {
+            (false, true) => Ordering::Greater,
+            (true, false) => Ordering::Less,
+            _ => file_a
+                .file_size()
+                .unwrap_or(0)
+                .cmp(&file_b.file_size().unwrap_or(0))
+                .reverse()
+                .then(name_comparison.reverse()),
+        },
+    }
+}
+
 #[component]
 pub fn FileExplorer(path: Vec<String>) -> Element {
     let router = router();
     let mut app_state = use_context::<Signal<crate::AppState>>();
+    let mut modal_state = use_context::<Signal<crate::ModalState>>();
+    let mut selection_state = use_context::<Signal<crate::SelectionState>>();
     let mut context_menu = use_context::<Signal<ContextMenuState>>();
     let reqwest_client_context = use_context::<Signal<ReqwestClient>>();
     let upload_state = use_context::<Signal<crate::UploadState>>();
-    let active_modal_state = app_state.read().active_modal.clone();
+    let active_modal_state = modal_state.read().active_modal.clone();
     let needs_refetch = use_memo(move || app_state.read().needs_refetch);
     let file_upload_path = path.clone();
     let folder_upload_path = path.clone();
@@ -140,7 +204,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
         last_scroll_height.set(0.0);
         let _ = document::eval("document.getElementById('file-explorer-main').scrollTop = 0;");
 
-        app_state
+        modal_state
             .write()
             .close_modals_if_path_changed(&_path_for_reset);
     }));
@@ -167,103 +231,75 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
             files.retain(|f| !f.file_name().starts_with('.'));
         }
 
-        files.sort_by(|file_a, file_b| {
-            let name_comparison = file_a
-                .file_name()
-                .chars()
-                .map(|c| c.to_ascii_lowercase())
-                .cmp(file_b.file_name().chars().map(|c| c.to_ascii_lowercase()));
-            let extension_comparison = file_a.file_extension().cmp(&file_b.file_extension());
-
-            match *sort_criteria.read() {
-                SortCriteria::NameAsc => name_comparison,
-                SortCriteria::NameDesc => name_comparison.reverse(),
-                SortCriteria::TypeAsc => match (file_a.is_file(), file_b.is_file()) {
-                    (false, true) => Ordering::Less,
-                    (true, false) => Ordering::Greater,
-                    _ => extension_comparison.then(name_comparison),
-                },
-                SortCriteria::TypeDesc => match (file_a.is_file(), file_b.is_file()) {
-                    (false, true) => Ordering::Greater,
-                    (true, false) => Ordering::Less,
-                    _ => extension_comparison
-                        .reverse()
-                        .then(name_comparison.reverse()),
-                },
-                SortCriteria::SizeAsc => match (file_a.is_file(), file_b.is_file()) {
-                    (false, true) => Ordering::Less,
-                    (true, false) => Ordering::Greater,
-                    _ => file_a
-                        .file_size()
-                        .unwrap_or(0)
-                        .cmp(&file_b.file_size().unwrap_or(0))
-                        .then(name_comparison),
-                },
-                SortCriteria::SizeDesc => match (file_a.is_file(), file_b.is_file()) {
-                    (false, true) => Ordering::Greater,
-                    (true, false) => Ordering::Less,
-                    _ => file_a
-                        .file_size()
-                        .unwrap_or(0)
-                        .cmp(&file_b.file_size().unwrap_or(0))
-                        .reverse()
-                        .then(name_comparison.reverse()),
-                },
-            }
-        });
+        let criteria = *sort_criteria.read();
+        files.sort_by(|file_a, file_b| compare_items(file_a, file_b, criteria));
 
         Some(files)
     });
 
     use_context_provider(|| sorted_files);
 
-    let loading_spinner = rsx! {
-        div { class: "flex w-full justify-center p-12 col-span-full",
-            Spinner { class: "h-8 w-8 text-muted-foreground" }
-        }
-    };
+    // Memoized deliberately: this builds a FileComponent/FolderComponent
+    // VNode for every currently-displayed item (up to `display_count`, which
+    // only grows as the user scrolls a large folder), by far the most
+    // expensive computation in this component. Without `use_memo` it would
+    // re-run in full on *every* render of FileExplorer - including renders
+    // triggered by unrelated state like a modal opening - which on desktop
+    // (where each rebuilt VNode tree also has to be diffed and its patches
+    // shipped over IPC to the webview) was severe enough to visibly freeze
+    // scrolling in large folders.
+    let path_for_display = path.clone();
+    let folder_contents_for_display = use_memo(move || {
+        let loading_spinner = rsx! {
+            div { class: "flex w-full justify-center p-12 col-span-full",
+                Spinner { class: "h-8 w-8 text-muted-foreground" }
+            }
+        };
 
-    let folder_contents_for_display = match (*folder_contents_resource.value())() {
-        Some((Err(_), _)) => {
-            vec![rsx! { div { class: "col-span-full text-destructive", "Error loading folder." } }]
-        }
-        Some((Ok(_), resource_path)) if resource_path == path => {
-            if let Some(files) = sorted_files.read().as_ref() {
-                files
-                    .iter()
-                    .enumerate()
-                    .take(*display_count.read())
-                    .map(|(index, item)| {
-                        rsx! {
-                            match item {
-                                FolderContent::File(file) => {
-                                    rsx! {
-                                        FileComponent {
-                                            key: "{file.file_name}",
-                                            file: file.clone(),
-                                            current_path: path.clone(),
-                                            index,
+        match (*folder_contents_resource.value())() {
+            Some((Err(_), _)) => {
+                vec![
+                    rsx! { div { class: "col-span-full text-destructive", "Error loading folder." } },
+                ]
+            }
+            Some((Ok(_), resource_path)) if resource_path == path_for_display => {
+                if let Some(files) = sorted_files.read().as_ref() {
+                    files
+                        .iter()
+                        .enumerate()
+                        .take(*display_count.read())
+                        .map(|(index, item)| {
+                            rsx! {
+                                match item {
+                                    FolderContent::File(file) => {
+                                        rsx! {
+                                            FileComponent {
+                                                key: "{file.file_name}",
+                                                file: file.clone(),
+                                                current_path: path_for_display.clone(),
+                                                index,
+                                            }
                                         }
                                     }
+                                    FolderContent::Folder(folder) => rsx! {
+                                        FolderComponent {
+                                            key: "{folder.file_name}",
+                                            file: folder.clone(),
+                                            current_path: path_for_display.clone(),
+                                            index,
+                                        }
+                                    },
                                 }
-                                FolderContent::Folder(folder) => rsx! {
-                                    FolderComponent {
-                                        key: "{folder.file_name}",
-                                        file: folder.clone(),
-                                        current_path: path.clone(),
-                                        index,
-                                    }
-                                },
                             }
-                        }
-                    })
-                    .collect::<Vec<_>>()
-            } else {
-                vec![loading_spinner]
+                        })
+                        .collect::<Vec<_>>()
+                } else {
+                    vec![loading_spinner]
+                }
             }
+            _ => vec![loading_spinner],
         }
-        _ => vec![loading_spinner],
-    };
+    });
 
     let path_clone_back = path.clone();
     let path_clone_ctx = path.clone();
@@ -275,13 +311,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                 .filter(|f| f.is_file())
                 .filter_map(|f| {
                     if let Some(ext) = f.file_extension() {
-                        if IMAGE_FORMATS
-                            .iter()
-                            .any(|fmt| ext.eq_ignore_ascii_case(fmt))
-                            || VIDEO_FORMATS
-                                .iter()
-                                .any(|fmt| ext.eq_ignore_ascii_case(fmt))
-                        {
+                        if is_image_ext(&ext) || is_video_ext(&ext) {
                             return Some(f.file_name().to_string());
                         }
                     }
@@ -326,7 +356,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
             oncontextmenu: move |evt| {
                 evt.prevent_default();
                 evt.stop_propagation();
-                app_state.write().selected_files.clear();
+                selection_state.write().selected_files.clear();
                 let coords = evt.client_coordinates();
                 let mut state = context_menu.write();
                 let current_folder_name = path_clone_ctx
@@ -354,13 +384,13 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                 state.position = (coords.x, coords.y);
             },
             onclick: move |_| {
-                app_state.write().selected_files.clear();
+                selection_state.write().selected_files.clear();
             },
             onkeydown: move |evt| {
                 if evt.key().to_string() == "." {
                     show_hidden.toggle();
                 } else if evt.key().to_string() == "Escape" {
-                    app_state.write().selected_files.clear();
+                    selection_state.write().selected_files.clear();
                 }
             },
             onscroll: move |evt| {
@@ -406,7 +436,7 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                         }
                     }
                     select {
-                        class: "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-sm h-10 px-4 py-2 w-full sm:w-auto active:scale-95 duration-200 cursor-pointer appearance-none",
+                        class: "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-sm h-10 px-4 py-2 w-full sm:w-auto active:scale-95 duration-200 cursor-pointer appearance-none",
                         onchange: move |e| {
                             if let Ok(val) = e.value().parse::<SortCriteria>() {
                                 sort_criteria.set(val);
@@ -422,14 +452,14 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                     Button {
                         class: "w-full sm:w-auto",
                         onclick: move |_| {
-                            app_state.write().active_modal = Some(crate::AppModal::CreateFile);
+                            modal_state.write().active_modal = Some(crate::AppModal::CreateFile);
                         },
                         "Create File"
                     }
                     Button {
                         class: "w-full sm:w-auto",
                         onclick: move |_| {
-                            app_state.write().active_modal = Some(crate::AppModal::CreateFolder);
+                            modal_state.write().active_modal = Some(crate::AppModal::CreateFolder);
                         },
                         "Create Folder"
                     }
@@ -510,9 +540,9 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                         EditFileModal { file_name, current_path: file_path }
                     }
                 }
-                Some(crate::AppModal::Rename(old_name, file_path, is_file)) => {
+                Some(crate::AppModal::Rename(item, file_path)) => {
                     rsx! {
-                        RenameModal { old_name, current_path: file_path, is_file }
+                        RenameModal { item, current_path: file_path }
                     }
                 }
                 Some(crate::AppModal::Delete((items, file_path))) => {
@@ -520,9 +550,9 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
                         DeleteModal { items, current_path: file_path }
                     }
                 }
-                Some(crate::AppModal::PhotoViewer(file_name, file_path)) => {
+                Some(crate::AppModal::Gallery(file_name, file_path)) => {
                     rsx! {
-                        PhotoViewerModal {
+                        Gallery {
                             file_name,
                             current_path: file_path,
                             media_files: media_files_list.read().clone(),
@@ -543,8 +573,94 @@ pub fn FileExplorer(path: Vec<String>) -> Element {
             }
 
             div { class: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 h-min w-full px-4 py-4 gap-4",
-                {folder_contents_for_display.into_iter()}
+                {folder_contents_for_display.read().iter().cloned()}
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{File as ModelFile, Folder as ModelFolder};
+
+    fn file(name: &str, ext: &str, size: i64) -> FolderContent {
+        FolderContent::File(ModelFile {
+            file_name: name.to_string(),
+            file_extension: Some(ext.to_string()),
+            file_size: Some(size),
+            created_date: None,
+            last_modified_date: None,
+        })
+    }
+
+    fn folder(name: &str) -> FolderContent {
+        FolderContent::Folder(ModelFolder {
+            file_name: name.to_string(),
+            file_size: None,
+            created_date: None,
+            last_modified_date: None,
+            file_count: 0,
+            folder_count: 0,
+        })
+    }
+
+    #[test]
+    fn type_asc_sorts_folders_before_files() {
+        let f = folder("zzz");
+        let g = file("aaa", "txt", 1);
+        assert_eq!(compare_items(&f, &g, SortCriteria::TypeAsc), Ordering::Less);
+    }
+
+    #[test]
+    fn type_desc_fully_reverses_folder_file_grouping() {
+        let f = folder("zzz");
+        let g = file("aaa", "txt", 1);
+        assert_eq!(
+            compare_items(&f, &g, SortCriteria::TypeDesc),
+            Ordering::Greater
+        );
+    }
+
+    #[test]
+    fn name_sort_is_case_insensitive() {
+        let a = file("Banana.txt", "txt", 1);
+        let b = file("apple.txt", "txt", 1);
+        assert_eq!(
+            compare_items(&a, &b, SortCriteria::NameAsc),
+            Ordering::Greater
+        );
+        assert_eq!(
+            compare_items(&a, &b, SortCriteria::NameDesc),
+            Ordering::Less
+        );
+    }
+
+    #[test]
+    fn size_sort_orders_by_size_then_falls_back_to_name() {
+        let small = file("b.txt", "txt", 10);
+        let big = file("a.txt", "txt", 100);
+        assert_eq!(
+            compare_items(&small, &big, SortCriteria::SizeAsc),
+            Ordering::Less
+        );
+        assert_eq!(
+            compare_items(&small, &big, SortCriteria::SizeDesc),
+            Ordering::Greater
+        );
+
+        let same_size_a = file("b.txt", "txt", 10);
+        let same_size_b = file("a.txt", "txt", 10);
+        assert_eq!(
+            compare_items(&same_size_a, &same_size_b, SortCriteria::SizeAsc),
+            Ordering::Greater
+        );
+    }
+
+    #[test]
+    fn type_sort_groups_by_extension_before_name() {
+        let a = file("z.png", "png", 1);
+        let b = file("a.txt", "txt", 1);
+        assert_eq!(compare_items(&a, &b, SortCriteria::TypeAsc), Ordering::Less);
     }
 }

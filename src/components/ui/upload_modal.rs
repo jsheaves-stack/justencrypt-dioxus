@@ -61,7 +61,7 @@ pub fn UploadModal() -> Element {
                     }
                     div { class: "w-full h-1.5 bg-muted rounded-full overflow-hidden mt-1",
                         div {
-                            class: "h-full bg-primary transition-all duration-500 ease-out",
+                            class: "h-full bg-primary transition-[width] duration-500 ease-out",
                             style: "width: {overall_progress}%",
                         }
                     }
@@ -110,7 +110,7 @@ pub fn UploadModal() -> Element {
                                 div { class: "flex items-center gap-3",
                                     div { class: "flex-grow h-1.5 bg-muted rounded-full overflow-hidden",
                                         div {
-                                            class: "h-full bg-primary transition-all duration-300 ease-out",
+                                            class: "h-full bg-primary transition-[width] duration-300 ease-out",
                                             style: "width: {task.progress}%",
                                         }
                                     }

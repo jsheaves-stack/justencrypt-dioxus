@@ -78,4 +78,27 @@ impl FolderContent {
             FolderContent::Folder(_) => None,
         }
     }
+
+    /// Identity of this item for selection/move/delete/rename purposes.
+    pub fn key(&self) -> ItemKey {
+        ItemKey::new(self.file_name(), self.is_file())
+    }
+}
+
+/// Identifies a file or folder by name within its parent directory. Used
+/// wherever an item needs to be tracked without carrying its full listing
+/// data along: the multi-select set, and move/delete/rename targets.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ItemKey {
+    pub name: String,
+    pub is_file: bool,
+}
+
+impl ItemKey {
+    pub fn new(name: impl Into<String>, is_file: bool) -> Self {
+        Self {
+            name: name.into(),
+            is_file,
+        }
+    }
 }
