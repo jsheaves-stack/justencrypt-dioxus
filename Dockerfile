@@ -49,13 +49,19 @@ RUN npm run build:css
 
 # Pass the build version and number to the app
 ARG APP_VERSION
-ARG BUILD_NUMBER
-ENV APP_VERSION=${APP_VERSION}
-ENV BUILD_NUMBER=${BUILD_NUMBER}
+ARG BUILD_NUMBER=1
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/app/target,id=cargo-target-web \
+    if [ -z "$APP_VERSION" ]; then \
+        VERSION=$(grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2); \
+        DATE=$(date +%Y%m%d); \
+        export APP_VERSION="${VERSION}-${DATE}.${BUILD_NUMBER}"; \
+    else \
+        export APP_VERSION="${APP_VERSION}"; \
+    fi && \
+    export BUILD_NUMBER="${BUILD_NUMBER}" && \
     dx build --release --platform web && \
     mkdir -p /output && \
     cp -r target/dx/justencrypt-client/release/web/public /output/public
@@ -132,15 +138,21 @@ RUN --mount=type=cache,target=/root/.npm \
 RUN npm run build:css
 
 ARG APP_VERSION
-ARG BUILD_NUMBER
-ENV APP_VERSION=${APP_VERSION}
-ENV BUILD_NUMBER=${BUILD_NUMBER}
+ARG BUILD_NUMBER=1
 
 ENV NO_STRIP=true
 RUN --mount=type=cache,target=/root/.cargo/registry \
     --mount=type=cache,target=/root/.cargo/git \
     --mount=type=cache,target=/app/target,id=cargo-target-desktop \
     --mount=type=cache,target=/root/.cache/tauri \
+    if [ -z "$APP_VERSION" ]; then \
+        VERSION=$(grep '^version =' Cargo.toml | head -n 1 | cut -d '"' -f 2); \
+        DATE=$(date +%Y%m%d); \
+        export APP_VERSION="${VERSION}-${DATE}.${BUILD_NUMBER}"; \
+    else \
+        export APP_VERSION="${APP_VERSION}"; \
+    fi && \
+    export BUILD_NUMBER="${BUILD_NUMBER}" && \
     dx bundle --desktop --package-types appimage --release
 
 FROM scratch AS desktop-artifacts
