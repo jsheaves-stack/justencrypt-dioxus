@@ -20,42 +20,39 @@
 //! process knows (see `proxy_token`) - otherwise any other local process
 //! could use it as an open tunnel to the logged-in user's files.
 
-/// Escapes characters in a file/folder-derived `path` that would otherwise
-/// be parsed as URL syntax instead of literal path characters: `%` (escaped
-/// first, so it doesn't double-escape the other two), `?` (query
-/// separator), and `#` (fragment separator). A file or folder name
-/// containing one of these (all valid on Linux, e.g. `invoice?2024.pdf`)
+/// Builds `/{endpoint}/{path...}/{name}`, with every folder and the file name
+/// percent-encoded as its own segment (see `util::encode_segment`). A name
+/// containing e.g. `?` or `#` (both valid on Linux, e.g. `invoice?2024.pdf`)
 /// would otherwise be truncated at that character by URL parsing - on
 /// desktop that also shifts the rest of the string into the query string,
 /// hiding the real `?token=...` and making `split_path_and_token` fail to
-/// find it. Slashes are left alone since they're the intentional
-/// path-segment separators here.
-fn escape_url_reserved(path: &str) -> std::borrow::Cow<'_, str> {
-    if !path.contains(['%', '?', '#']) {
-        return std::borrow::Cow::Borrowed(path);
-    }
-    std::borrow::Cow::Owned(
-        path.replace('%', "%25")
-            .replace('?', "%3F")
-            .replace('#', "%23"),
+/// find it.
+fn media_path(endpoint: &str, current_path: &[String], name: &str) -> String {
+    let mut path = format!("/{endpoint}");
+    crate::util::push_path_segments(&mut path, current_path, Some(name));
+    path
+}
+
+/// Builds a URL for file `name` in `current_path` under `endpoint` (e.g.
+/// `"thumbnail"` or `"file"`) that the DOM can fetch directly. This is the
+/// only place that should construct such a URL - going through it (rather
+/// than `media_origin`/`proxy_token` directly) means neither the name
+/// encoding nor the desktop auth token can be forgotten at a call site.
+#[cfg(target_arch = "wasm32")]
+pub fn media_url(endpoint: &str, current_path: &[String], name: &str) -> String {
+    format!(
+        "{}{}",
+        media_origin(),
+        media_path(endpoint, current_path, name)
     )
 }
 
-/// Builds a URL for `path` (e.g. `"/thumbnail/foo.jpg"`) that the DOM can
-/// fetch directly. This is the only place that should construct such a URL -
-/// going through it (rather than `media_origin`/`proxy_token` directly)
-/// means the desktop auth token can't be forgotten at a call site.
-#[cfg(target_arch = "wasm32")]
-pub fn media_url(path: &str) -> String {
-    format!("{}{}", media_origin(), escape_url_reserved(path))
-}
-
 #[cfg(not(target_arch = "wasm32"))]
-pub fn media_url(path: &str) -> String {
+pub fn media_url(endpoint: &str, current_path: &[String], name: &str) -> String {
     format!(
         "{}{}?token={}",
         media_origin(),
-        escape_url_reserved(path),
+        media_path(endpoint, current_path, name),
         proxy_token()
     )
 }
@@ -262,31 +259,35 @@ fn serve_media_request(request: tiny_http::Request) {
 mod tests {
     use super::*;
 
+    fn path(segments: &[&str]) -> Vec<String> {
+        segments.iter().map(|s| s.to_string()).collect()
+    }
+
     #[test]
-    fn escape_url_reserved_leaves_ordinary_paths_untouched() {
+    fn media_path_for_root_level_file_has_no_empty_segment() {
         assert_eq!(
-            escape_url_reserved("/thumbnail/foo.jpg"),
+            media_path("thumbnail", &[], "foo.jpg"),
             "/thumbnail/foo.jpg"
         );
     }
 
     #[test]
-    fn escape_url_reserved_escapes_query_and_fragment_separators() {
+    fn media_path_includes_folders() {
         assert_eq!(
-            escape_url_reserved("/thumbnail/invoice?2024.pdf"),
-            "/thumbnail/invoice%3F2024.pdf"
-        );
-        assert_eq!(
-            escape_url_reserved("/thumbnail/a#b.jpg"),
-            "/thumbnail/a%23b.jpg"
+            media_path("file", &path(&["a", "b"]), "foo.jpg"),
+            "/file/a/b/foo.jpg"
         );
     }
 
     #[test]
-    fn escape_url_reserved_escapes_percent_first_to_avoid_double_escaping() {
+    fn media_path_encodes_folder_and_file_names() {
         assert_eq!(
-            escape_url_reserved("/thumbnail/100%done.jpg"),
-            "/thumbnail/100%25done.jpg"
+            media_path(
+                "thumbnail",
+                &path(&["100% real", "a#b"]),
+                "invoice?2024.pdf"
+            ),
+            "/thumbnail/100%25%20real/a%23b/invoice%3F2024.pdf"
         );
     }
 
@@ -297,7 +298,7 @@ mod tests {
         // the real `?token=...` was never found and authenticate() failed.
         let target = format!(
             "{}?token={}",
-            escape_url_reserved("/thumbnail/invoice?2024.pdf"),
+            media_path("thumbnail", &[], "invoice?2024.pdf"),
             proxy_token()
         );
         assert_eq!(authenticate(&target), Some("/thumbnail/invoice%3F2024.pdf"));

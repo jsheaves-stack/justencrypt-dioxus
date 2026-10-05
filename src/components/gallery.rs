@@ -5,9 +5,7 @@ use crate::{
         file_explorer::is_video_ext,
         ui::{image::CROSSORIGIN, spinner::Spinner},
     },
-    media_url,
-    util::path_prefix,
-    ModalState,
+    media_url, ModalState,
 };
 
 /// Fullscreen image/video gallery, opened from a media file's grid card or
@@ -60,20 +58,18 @@ pub fn Gallery(file_name: String, current_path: Vec<String>, media_files: Vec<St
         .and_then(|f| f.split('.').next_back())
         .is_some_and(is_video_ext);
 
-    let path_str = path_prefix(&current_path);
-
     // media_url() points at the real API origin on wasm (the browser
     // already holds the session cookie) or a local proxy URL on desktop
     // that proxies through the app's own authenticated client - see
-    // `media_proxy` in main.rs. Either way these are plain URLs the DOM
-    // fetches directly; no Rust-side request needed to display them.
-    let image_url = current_file.as_ref().map_or(String::new(), |f| {
-        media_url(&format!("/file/{}{}", path_str, f))
-    });
+    // `media_proxy.rs`. Either way these are plain URLs the DOM fetches
+    // directly; no Rust-side request needed to display them.
+    let image_url = current_file
+        .as_ref()
+        .map_or(String::new(), |f| media_url("file", &current_path, f));
 
-    let thumbnail_url = current_file.as_ref().map_or(String::new(), |f| {
-        media_url(&format!("/thumbnail/{}{}", path_str, f))
-    });
+    let thumbnail_url = current_file
+        .as_ref()
+        .map_or(String::new(), |f| media_url("thumbnail", &current_path, f));
 
     let image_url_for_preload = image_url.clone();
 

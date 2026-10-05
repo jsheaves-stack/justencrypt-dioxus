@@ -3,7 +3,7 @@ use dioxus::prelude::*;
 use crate::{
     components::{file_explorer::EDITABLE_FORMATS, ui::toast::show_toast},
     models::{FolderContent, ItemKey},
-    requests::file::download_file,
+    requests::{file::download_file, folder::download_folder},
     ModalState, ReqwestClient, Route, SelectionState, ToastKind, ToastState,
 };
 
@@ -152,34 +152,49 @@ pub fn ContextMenu() -> Element {
                                             },
                                         }
                                     }
+                                }
 
-                                    ContextMenuItem {
-                                        label: "Download",
-                                        onclick: {
-                                            let dl_name = name.clone();
-                                            let dl_path = path.clone();
-                                            move |_| {
-                                                let name_clone = dl_name.clone();
-                                                let path_clone = dl_path.clone();
-                                                spawn(async move {
-                                                    if let Err(e) = download_file(
-                                                            reqwest_client_context,
-                                                            path_clone,
-                                                            name_clone,
-                                                        )
-                                                        .await
-                                                    {
-                                                        show_toast(
-                                                            toast_state,
-                                                            e.user_message("download file"),
-                                                            ToastKind::Error,
-                                                        );
-                                                    }
-                                                });
-                                                context_menu.write().target = ContextMenuTarget::None;
-                                            }
-                                        },
-                                    }
+                                ContextMenuItem {
+                                    label: "Download",
+                                    onclick: {
+                                        let dl_name = name.clone();
+                                        let dl_path = path.clone();
+                                        move |_| {
+                                            let name_clone = dl_name.clone();
+                                            let path_clone = dl_path.clone();
+                                            spawn(async move {
+                                                let (result, action) = if is_file {
+                                                    (
+                                                        download_file(
+                                                                reqwest_client_context,
+                                                                path_clone,
+                                                                name_clone,
+                                                            )
+                                                            .await,
+                                                        "download file",
+                                                    )
+                                                } else {
+                                                    (
+                                                        download_folder(
+                                                                reqwest_client_context,
+                                                                path_clone,
+                                                                name_clone,
+                                                            )
+                                                            .await,
+                                                        "download folder",
+                                                    )
+                                                };
+                                                if let Err(e) = result {
+                                                    show_toast(
+                                                        toast_state,
+                                                        e.user_message(action),
+                                                        ToastKind::Error,
+                                                    );
+                                                }
+                                            });
+                                            context_menu.write().target = ContextMenuTarget::None;
+                                        }
+                                    },
                                 }
 
                                 if !is_root_folder {

@@ -2,7 +2,20 @@ pub mod file;
 pub mod folder;
 pub mod session;
 
+use crate::util::push_path_segments;
 use reqwest::{RequestBuilder, StatusCode};
+
+#[cfg(target_arch = "wasm32")]
+use {
+    wasm_bindgen::JsCast,
+    web_sys::{window, HtmlAnchorElement},
+};
+
+#[cfg(not(target_arch = "wasm32"))]
+use {
+    crate::ReqwestClient, dioxus::signals::Signal, tokio::fs::File as TokioFile,
+    tokio::io::AsyncWriteExt,
+};
 
 pub trait RequestBuilderExt {
     fn with_credentials_if_wasm(self) -> Self;
@@ -20,18 +33,12 @@ impl RequestBuilderExt for RequestBuilder {
     }
 }
 
+/// Builds `{api_url}/{endpoint}/{path...}/{item_name}`. `endpoint` is a fixed
+/// route (e.g. `"file/upload/initiate"`) and is used as-is; every folder in
+/// `current_path` and `item_name` is percent-encoded as its own segment.
 pub fn build_url(endpoint: &str, current_path: &[String], item_name: Option<&str>) -> String {
     let mut url = format!("{}/{}", crate::api_url(), endpoint);
-    if !current_path.is_empty() {
-        url.push('/');
-        url.push_str(&current_path.join("/"));
-    }
-    if let Some(name) = item_name {
-        if !name.is_empty() {
-            url.push('/');
-            url.push_str(name);
-        }
-    }
+    push_path_segments(&mut url, current_path, item_name);
     url
 }
 
@@ -70,6 +77,9 @@ impl RequestError {
             RequestError::Status(StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) => {
                 "Your session has expired, please log in again".to_string()
             }
+            RequestError::Status(StatusCode::TOO_MANY_REQUESTS) => {
+                format!("Failed to {action}: the server is busy, try again shortly")
+            }
             RequestError::Network(_) => {
                 format!("Failed to {action}: could not reach the server")
             }
@@ -105,6 +115,126 @@ pub async fn send_and_discard(req: RequestBuilder) -> Result<(), RequestError> {
     let resp = send(req).await?;
     let _ = resp.bytes().await;
     Ok(())
+}
+
+/// Starts a browser download of `url` by clicking a temporary `<a download>`.
+/// The browser fetches the URL itself (with the session cookie), so the body
+/// streams straight to disk and never passes through wasm memory - but it
+/// also means an error status shows up only as a failed download in the
+/// browser, not as an `Err` here.
+///
+/// `download_name` is only a hint: an empty string defers to the server's
+/// `Content-Disposition` filename, and browsers ignore the attribute
+/// entirely for cross-origin URLs.
+#[cfg(target_arch = "wasm32")]
+pub fn trigger_browser_download(url: &str, download_name: &str) -> Result<(), RequestError> {
+    tracing::debug!("Triggering WASM download for {}", url);
+
+    fn to_err<E: std::fmt::Debug>(context: &'static str) -> impl Fn(E) -> RequestError {
+        move |e| {
+            tracing::error!("WASM download failed to {}: {:?}", context, e);
+            RequestError::Decode(format!("browser download failed to {context}"))
+        }
+    }
+
+    let window = window().ok_or_else(|| {
+        tracing::error!("WASM download failed: no window object");
+        RequestError::Decode("no window object".to_string())
+    })?;
+    let document = window.document().ok_or_else(|| {
+        tracing::error!("WASM download failed: no document object");
+        RequestError::Decode("no document object".to_string())
+    })?;
+    let a = document
+        .create_element("a")
+        .map_err(to_err("create anchor"))?;
+    let a: HtmlAnchorElement = a.dyn_into().map_err(to_err("cast anchor"))?;
+
+    a.set_href(url);
+    a.set_download(download_name);
+
+    let body = document.body().ok_or_else(|| {
+        tracing::error!("WASM download failed: no body object");
+        RequestError::Decode("no body object".to_string())
+    })?;
+    body.append_child(&a).map_err(to_err("append anchor"))?;
+
+    a.click();
+
+    body.remove_child(&a).map_err(to_err("remove anchor"))?;
+
+    tracing::debug!("WASM download triggered successfully");
+    Ok(())
+}
+
+/// Asks the user where to save (suggesting `suggested_name`), then streams a
+/// GET of `url` into that file. Returns `Ok` without doing anything if the
+/// user cancels the dialog.
+///
+/// A failed or cut-short download (e.g. a folder archive that ends before
+/// its `Content-Length`, which reqwest reports as a body error) deletes the
+/// partial file rather than leaving a truncated copy that looks complete.
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn save_download(
+    reqwest_client_context: Signal<ReqwestClient>,
+    url: &str,
+    suggested_name: &str,
+) -> Result<(), RequestError> {
+    let Some(handle) = rfd::AsyncFileDialog::new()
+        .set_file_name(suggested_name)
+        .save_file()
+        .await
+    else {
+        tracing::debug!("Download cancelled by user");
+        return Ok(());
+    };
+    let path = handle.path();
+    tracing::debug!("Downloading {} to {:?}", url, path);
+
+    let mut resp = send(
+        reqwest_client_context()
+            .0
+            .get(url)
+            .with_credentials_if_wasm(),
+    )
+    .await
+    .inspect_err(|e| tracing::error!("Download failed: {:?}", e))?;
+
+    let mut file = TokioFile::create(path).await.map_err(|e| {
+        tracing::error!("Failed to create local file: {}", e);
+        RequestError::Decode(e.to_string())
+    })?;
+
+    let result = async {
+        while let Some(chunk) = resp.chunk().await.map_err(|e| {
+            tracing::error!("Failed to read chunk during download: {}", e);
+            RequestError::Network(e.to_string())
+        })? {
+            file.write_all(&chunk).await.map_err(|e| {
+                tracing::error!("Failed to write chunk to local file: {}", e);
+                RequestError::Decode(e.to_string())
+            })?;
+        }
+        // tokio's `File` buffers the last write; without this a late error
+        // (e.g. disk full) would be lost and success reported anyway.
+        file.flush().await.map_err(|e| {
+            tracing::error!("Failed to flush local file: {}", e);
+            RequestError::Decode(e.to_string())
+        })
+    }
+    .await;
+
+    match &result {
+        Ok(()) => tracing::debug!("Download saved successfully"),
+        Err(_) => {
+            drop(file);
+            if let Err(e) = tokio::fs::remove_file(path).await {
+                tracing::error!("Failed to remove partial download {:?}: {}", path, e);
+            }
+        }
+    }
+
+    result
 }
 
 #[cfg(test)]
@@ -143,6 +273,36 @@ mod tests {
     }
 
     #[test]
+    fn build_url_encodes_reserved_characters_in_names() {
+        // Regression test: a raw `#` truncated the URL at that point, so
+        // deleting `notes#1.txt` sent `DELETE /file/notes`.
+        let path = vec!["my docs".to_string(), "q?a".to_string()];
+        let url = build_url("file", &path, Some("notes#1.txt"));
+        assert_eq!(strip_base(&url), "/file/my%20docs/q%3Fa/notes%231.txt");
+    }
+
+    #[test]
+    fn build_url_does_not_encode_the_endpoint() {
+        let url = build_url("file/upload/initiate", &[], Some("a b.txt"));
+        assert_eq!(strip_base(&url), "/file/upload/initiate/a%20b.txt");
+    }
+
+    #[test]
+    fn build_url_survives_url_parsing_intact() {
+        // What actually matters: after reqwest parses the URL, the name is
+        // still the last path segment and nothing leaked into the query or
+        // fragment.
+        let url = build_url("file", &[], Some("invoice?2024#1.pdf"));
+        let parsed = reqwest::Url::parse(&url).unwrap();
+        assert_eq!(parsed.query(), None);
+        assert_eq!(parsed.fragment(), None);
+        assert_eq!(
+            parsed.path_segments().unwrap().next_back(),
+            Some("invoice%3F2024%231.pdf")
+        );
+    }
+
+    #[test]
     fn user_message_specializes_conflict_and_auth_statuses() {
         assert_eq!(
             RequestError::Status(StatusCode::CONFLICT).user_message("create folder"),
@@ -155,6 +315,10 @@ mod tests {
         assert_eq!(
             RequestError::Status(StatusCode::INTERNAL_SERVER_ERROR).user_message("delete item"),
             "Failed to delete item"
+        );
+        assert_eq!(
+            RequestError::Status(StatusCode::TOO_MANY_REQUESTS).user_message("download folder"),
+            "Failed to download folder: the server is busy, try again shortly"
         );
     }
 }

@@ -10,7 +10,6 @@ use crate::{
     },
     media_url,
     models::{File as ModelFile, FolderContent},
-    util::path_prefix,
     ModalState,
 };
 use dioxus::prelude::*;
@@ -34,11 +33,7 @@ pub fn File(file: ModelFile, current_path: Vec<String>, index: usize) -> Element
     let is_media = is_image || is_video;
 
     let thumbnail_url = match is_image {
-        true => media_url(&format!(
-            "/thumbnail/{}{}",
-            path_prefix(&current_path),
-            file.file_name
-        )),
+        true => media_url("thumbnail", &current_path, &file.file_name),
         false => String::new(),
     };
 

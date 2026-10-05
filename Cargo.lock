@@ -2716,6 +2716,7 @@ dependencies = [
  "futures-util",
  "gloo-timers",
  "js-sys",
+ "percent-encoding",
  "reqwest",
  "reqwest_cookie_store",
  "rfd 0.15.4",
