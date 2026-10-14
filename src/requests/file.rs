@@ -10,7 +10,6 @@ use super::save_download;
 use crate::{api_url, ReqwestClient};
 use dioxus::{html::FileData, prelude::*, signals::Signal};
 use futures_util::StreamExt;
-use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::{
     cmp,
@@ -179,12 +178,7 @@ async fn upload_chunk_with_retry(
     offset: u64,
     chunk_data: bytes::Bytes,
 ) -> Result<(), ()> {
-    let chunk_url = format!(
-        "{}/file/upload/chunk/{}?offset={}",
-        api_url(),
-        upload_id,
-        offset
-    );
+    let chunk_url = format!("{}/upload/chunk/{}?offset={}", api_url(), upload_id, offset);
 
     let mut attempt = 0;
     const MAX_RETRIES: u32 = 5;
@@ -359,7 +353,7 @@ fn folders_to_create(items: &[UploadItem]) -> BTreeSet<Vec<String>> {
 }
 
 /// Creates every folder in `folders` under `current_path`, parents first.
-/// A folder that already exists (409) counts as created, so uploading
+/// The server reports a folder that already exists as created, so uploading
 /// `pixel` into a folder that already has one merges into it. Returns the
 /// folders that couldn't be created. Since parents are created first, a
 /// folder inside a failed one fails too, so callers only need to check a
@@ -375,11 +369,11 @@ async fn create_upload_folders(
             continue;
         };
         let parent_path = current_path.iter().chain(parent).cloned().collect();
-        match put_folder(reqwest_client_context, parent_path, name.clone()).await {
-            Ok(()) | Err(RequestError::Status(StatusCode::CONFLICT)) => {}
-            Err(_) => {
-                failed.insert(folder.clone());
-            }
+        if put_folder(reqwest_client_context, parent_path, name.clone())
+            .await
+            .is_err()
+        {
+            failed.insert(folder.clone());
         }
     }
     failed
@@ -498,7 +492,7 @@ async fn upload_chunked(
     upload_state: Signal<crate::UploadState>,
     task_index: usize,
 ) -> Result<(), ()> {
-    let init_url = build_url("file/upload/initiate", &target_path, Some(&item.name));
+    let init_url = build_url("upload/initiate", &target_path, Some(&item.name));
 
     tracing::debug!("Initializing chunked upload: {}", init_url);
 
@@ -514,7 +508,7 @@ async fn upload_chunked(
     stream_and_upload_chunks(&client, &upload_id, item, upload_state, task_index).await?;
 
     let finalize_url = format!(
-        "{}/file/upload/finalize/{}?total_size={}",
+        "{}/upload/finalize/{}?total_size={}",
         api_url(),
         upload_id,
         item.size

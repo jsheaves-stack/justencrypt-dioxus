@@ -39,7 +39,7 @@ pub fn Login() -> Element {
                     app_state.write().authenticated = true;
                     router.replace(Route::Home {});
                 }
-                Err(RequestError::Status(StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN)) => {
+                Err(RequestError::Status(StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN, _)) => {
                     error_msg.set(Some("Invalid username or password".to_string()));
                 }
                 Err(e) => {

@@ -34,7 +34,7 @@ impl RequestBuilderExt for RequestBuilder {
 }
 
 /// Builds `{api_url}/{endpoint}/{path...}/{item_name}`. `endpoint` is a fixed
-/// route (e.g. `"file/upload/initiate"`) and is used as-is; every folder in
+/// route (e.g. `"upload/initiate"`) and is used as-is; every folder in
 /// `current_path` and `item_name` is percent-encoded as its own segment.
 pub fn build_url(endpoint: &str, current_path: &[String], item_name: Option<&str>) -> String {
     let mut url = format!("{}/{}", crate::api_url(), endpoint);
@@ -52,8 +52,9 @@ pub fn build_url(endpoint: &str, current_path: &[String], item_name: Option<&str
 /// dropping detail that's genuinely used.
 #[derive(Debug, Clone)]
 pub enum RequestError {
-    /// The server responded with a non-success status.
-    Status(StatusCode),
+    /// The server responded with a non-success status, along with the
+    /// `detail` from its Problem Details body, if it had one.
+    Status(StatusCode, Option<String>),
     /// The request itself never got a response (network/TLS/timeout).
     #[allow(dead_code)]
     Network(String),
@@ -66,28 +67,54 @@ impl RequestError {
     /// A short, user-facing message for the given `action` (e.g. "rename
     /// file"), specialized for the handful of statuses worth explaining
     /// beyond "it failed".
+    ///
+    /// A `400`'s own detail is shown when the server sent one, since that's
+    /// where it explains what was wrong with the request (e.g. an invalid
+    /// name, or moving a folder into itself).
     pub fn user_message(&self, action: &str) -> String {
         match self {
-            RequestError::Status(StatusCode::CONFLICT) => {
+            RequestError::Status(StatusCode::BAD_REQUEST, Some(detail)) => {
+                format!("Failed to {action}: {detail}")
+            }
+            RequestError::Status(StatusCode::CONFLICT, _) => {
                 "An item with that name already exists".to_string()
             }
-            RequestError::Status(StatusCode::NOT_FOUND) => {
+            RequestError::Status(StatusCode::NOT_FOUND, _) => {
                 format!("Failed to {action}: item not found")
             }
-            RequestError::Status(StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) => {
+            RequestError::Status(StatusCode::PAYLOAD_TOO_LARGE, _) => {
+                format!("Failed to {action}: the file is too large")
+            }
+            RequestError::Status(StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN, _) => {
                 "Your session has expired, please log in again".to_string()
             }
-            RequestError::Status(StatusCode::TOO_MANY_REQUESTS) => {
+            RequestError::Status(StatusCode::TOO_MANY_REQUESTS, _) => {
                 format!("Failed to {action}: the server is busy, try again shortly")
             }
             RequestError::Network(_) => {
                 format!("Failed to {action}: could not reach the server")
             }
-            RequestError::Status(_) | RequestError::Decode(_) => {
+            RequestError::Status(..) | RequestError::Decode(_) => {
                 format!("Failed to {action}")
             }
         }
     }
+}
+
+/// The part of an RFC 9457 Problem Details body (the server's error format)
+/// worth keeping: `detail`, what went wrong.
+#[derive(serde::Deserialize)]
+struct Problem {
+    detail: Option<String>,
+}
+
+/// The `detail` of a Problem Details error body, if it has one. The server
+/// prefixes every `400`'s detail with `Bad request: `, which is dropped as
+/// it adds nothing to a user-facing message.
+fn problem_detail(body: &[u8]) -> Option<String> {
+    let detail = serde_json::from_slice::<Problem>(body).ok()?.detail?;
+    let detail = detail.strip_prefix("Bad request: ").unwrap_or(&detail);
+    (!detail.is_empty()).then(|| detail.to_string())
 }
 
 /// Sends `req` and maps it to a `RequestError` on any non-success outcome.
@@ -104,8 +131,12 @@ pub async fn send(req: RequestBuilder) -> Result<reqwest::Response, RequestError
         Ok(resp)
     } else {
         let status = resp.status();
-        let _ = resp.bytes().await;
-        Err(RequestError::Status(status))
+        let detail = resp
+            .bytes()
+            .await
+            .ok()
+            .and_then(|body| problem_detail(&body));
+        Err(RequestError::Status(status, detail))
     }
 }
 
@@ -283,8 +314,8 @@ mod tests {
 
     #[test]
     fn build_url_does_not_encode_the_endpoint() {
-        let url = build_url("file/upload/initiate", &[], Some("a b.txt"));
-        assert_eq!(strip_base(&url), "/file/upload/initiate/a%20b.txt");
+        let url = build_url("upload/initiate", &[], Some("a b.txt"));
+        assert_eq!(strip_base(&url), "/upload/initiate/a%20b.txt");
     }
 
     #[test]
@@ -305,20 +336,62 @@ mod tests {
     #[test]
     fn user_message_specializes_conflict_and_auth_statuses() {
         assert_eq!(
-            RequestError::Status(StatusCode::CONFLICT).user_message("create folder"),
+            RequestError::Status(StatusCode::CONFLICT, None).user_message("create folder"),
             "An item with that name already exists"
         );
         assert_eq!(
-            RequestError::Status(StatusCode::UNAUTHORIZED).user_message("rename file"),
+            RequestError::Status(StatusCode::UNAUTHORIZED, None).user_message("rename file"),
             "Your session has expired, please log in again"
         );
         assert_eq!(
-            RequestError::Status(StatusCode::INTERNAL_SERVER_ERROR).user_message("delete item"),
+            RequestError::Status(StatusCode::INTERNAL_SERVER_ERROR, None)
+                .user_message("delete item"),
             "Failed to delete item"
         );
         assert_eq!(
-            RequestError::Status(StatusCode::TOO_MANY_REQUESTS).user_message("download folder"),
+            RequestError::Status(StatusCode::TOO_MANY_REQUESTS, None)
+                .user_message("download folder"),
             "Failed to download folder: the server is busy, try again shortly"
         );
+    }
+
+    #[test]
+    fn user_message_shows_a_bad_requests_detail() {
+        let detail = Some("Cannot move a folder into itself or its subfolders".to_string());
+        assert_eq!(
+            RequestError::Status(StatusCode::BAD_REQUEST, detail).user_message("move item"),
+            "Failed to move item: Cannot move a folder into itself or its subfolders"
+        );
+        assert_eq!(
+            RequestError::Status(StatusCode::BAD_REQUEST, None).user_message("move item"),
+            "Failed to move item"
+        );
+        // Only a 400's detail is shown; other statuses keep their own message.
+        assert_eq!(
+            RequestError::Status(StatusCode::NOT_FOUND, Some("Not found".to_string()))
+                .user_message("rename file"),
+            "Failed to rename file: item not found"
+        );
+    }
+
+    #[test]
+    fn problem_detail_reads_and_trims_the_detail() {
+        let body = br#"{"type":"about:blank","title":"Bad Request","status":400,
+            "detail":"Bad request: Nothing to change"}"#;
+        assert_eq!(problem_detail(body), Some("Nothing to change".to_string()));
+
+        let body =
+            br#"{"type":"about:blank","title":"Not Found","status":404,"detail":"Not found"}"#;
+        assert_eq!(problem_detail(body), Some("Not found".to_string()));
+    }
+
+    #[test]
+    fn problem_detail_is_none_without_a_detail() {
+        assert_eq!(
+            problem_detail(br#"{"type":"about:blank","title":"Not Found","status":404}"#),
+            None
+        );
+        assert_eq!(problem_detail(b"<html>Bad Gateway</html>"), None);
+        assert_eq!(problem_detail(b""), None);
     }
 }
