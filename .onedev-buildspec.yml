@@ -10,34 +10,45 @@ jobs:
     withSubmodules: false
     condition: SUCCESSFUL
     optional: false
+  - type: CommandStep
+    name: Version
+    runInContainer: true
+    image: alpine:3.20
+    interpreter:
+      type: PosixInterpreter
+      shell: sh
+      commands: |
+        apk add --no-cache curl
+        REGISTRY_URL='@server_url@' \
+        IMAGE='@server@/@project_path@/@project_name@' \
+        REGISTRY_USER='@job_token@' \
+        REGISTRY_PASSWORD='@secret:publish_token@' \
+        BRANCH='@branch@' \
+        sh ci/build-version.sh
+    runAs: 0:0
+    useTTY: true
+    condition: SUCCESSFUL
+    optional: false
+  - type: SetBuildVersionStep
+    name: Set Version
+    buildVersion: '@file:build-info/version@'
+    condition: SUCCESSFUL
+    optional: false
   - type: BuildImageStep
     name: Docker
     output:
       type: RegistryOutput
-      tags: '@server@/@project_path@/@project_name@:latest'
+      tags: '@file:build-info/image-tags@'
     registryLogins:
     - registryUrl: '@server_url@'
       userName: '@job_token@'
       passwordSecret: publish_token
-    moreOptions: --target web
+    moreOptions: --target web --build-arg APP_VERSION=@build_version@
     condition: SUCCESSFUL
     optional: false
-  paramSpecs:
-  - type: TextParam
-    name: Build Version
-    allowEmpty: true
-    multiline: false
-    defaultValueProvider:
-      type: SpecifiedDefaultValue
-      value: 1.0.0
   triggers:
   - type: BranchUpdateTrigger
     userMatch: anyone
-    paramMatrix:
-    - valuesProvider:
-        type: IgnoreValues
-      secret: false
-      name: Build Version
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
